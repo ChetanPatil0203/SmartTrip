@@ -1,0 +1,910 @@
+// Prisma Schema for SmartTrip MySQL Database Connection
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------
+// ENUMS
+// ----------------------------------------------------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum StopType {
+  BOARDING
+  DROPPING
+  BOTH
+}
+
+enum SeatType {
+  SEATER
+  SLEEPER
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  DELAYED
+  CANCELLED
+  COMPLETED
+}
+
+enum BerthType {
+  LOWER
+  MIDDLE
+  UPPER
+  SIDE_LOWER
+  SIDE_UPPER
+  SEAT
+}
+
+enum FlightSeatClass {
+  ECONOMY
+  PREMIUM_ECONOMY
+  BUSINESS
+  FIRST
+}
+
+enum HotelRoomType {
+  SINGLE
+  DOUBLE
+  DELUXE
+  SUITE
+}
+
+enum BookingType {
+  BUS
+  TRAIN
+  FLIGHT
+  HOTEL
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  UPI
+  CARD
+  NET_BANKING
+  WALLET
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum CancellationStatus {
+  REQUESTED
+  PROCESSED
+  REJECTED
+}
+
+enum RefundStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+enum NotificationType {
+  BOOKING
+  PAYMENT
+  DELAY
+  CANCELLATION
+  REFUND
+  OFFER
+  GENERAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum SafetyReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+// ----------------------------------------------------
+// 1. USER & PASSENGER SYSTEM
+// ----------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  name         String?
+  email        String   @unique
+  phone        String?  @unique
+  password     String
+  role         Role     @default(USER)
+  profileImage String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  savedPassengers SavedPassenger[]
+  bookings        Booking[]
+  notifications   Notification[]
+  reviews         Review[]
+  supportTickets  SupportTicket[]
+  safetyReports   SafetyReport[]
+  tripShares      TripShare[]
+
+  @@index([email])
+  @@index([phone])
+  @@map("users")
+}
+
+model SavedPassenger {
+  id        String   @id @default(uuid())
+  userId    String
+  name      String
+  age       Int
+  gender    String
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("saved_passengers")
+}
+
+// ----------------------------------------------------
+// 2. BUS SYSTEM
+// ----------------------------------------------------
+
+model BusOperator {
+  id        String   @id @default(uuid())
+  name      String
+  logo      String?
+  phone     String?
+  email     String?
+  rating    Float?   @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  buses Bus[]
+
+  @@map("bus_operators")
+}
+
+model Bus {
+  id         String   @id @default(uuid())
+  operatorId String
+  busNumber  String   @unique
+  busType    String
+  totalSeats Int
+  amenities  String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  operator  BusOperator   @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  seats     BusSeat[]
+  schedules BusSchedule[]
+
+  @@index([operatorId])
+  @@map("buses")
+}
+
+model BusRoute {
+  id          String   @id @default(uuid())
+  source      String
+  destination String
+  distance    Float
+  duration    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stops     BusStop[]
+  schedules BusSchedule[]
+
+  @@map("bus_routes")
+}
+
+model BusStop {
+  id        String   @id @default(uuid())
+  routeId   String
+  name      String
+  address   String?
+  latitude  Float?
+  longitude Float?
+  stopType  StopType
+
+  route BusRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  busBoardingBookings BusBooking[] @relation("BoardingStop")
+  busDroppingBookings BusBooking[] @relation("DroppingStop")
+
+  @@index([routeId])
+  @@map("bus_stops")
+}
+
+model BusSchedule {
+  id            String         @id @default(uuid())
+  busId         String
+  routeId       String
+  travelDate    DateTime
+  departureTime String
+  arrivalTime   String
+  fare          Float
+  status        ScheduleStatus @default(SCHEDULED)
+
+  bus       Bus           @relation(fields: [busId], references: [id], onDelete: Restrict)
+  route     BusRoute      @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  trackings BusTracking[]
+  delays    DelayAlert[]
+  bookings  BusBooking[]
+
+  @@index([travelDate])
+  @@index([routeId])
+  @@index([busId])
+  @@map("bus_schedules")
+}
+
+model BusSeat {
+  id           String   @id @default(uuid())
+  busId        String
+  seatNumber   String
+  seatType     SeatType
+  rowNumber    Int?
+  columnNumber Int?
+
+  bus Bus @relation(fields: [busId], references: [id], onDelete: Cascade)
+
+  @@index([busId])
+  @@map("bus_seats")
+}
+
+// ----------------------------------------------------
+// 3. TRAIN SYSTEM
+// ----------------------------------------------------
+
+model TrainOperator {
+  id   String  @id @default(uuid())
+  name String
+  code String?
+  logo String?
+
+  trains Train[]
+
+  @@map("train_operators")
+}
+
+model Train {
+  id          String @id @default(uuid())
+  operatorId  String
+  trainNumber String @unique
+  trainName   String
+
+  operator  TrainOperator   @relation(fields: [operatorId], references: [id], onDelete: Restrict)
+  classes   TrainClass[]
+  seats     TrainSeat[]
+  schedules TrainSchedule[]
+
+  @@index([operatorId])
+  @@map("trains")
+}
+
+model TrainStation {
+  id        String  @id @default(uuid())
+  name      String
+  code      String  @unique
+  city      String
+  state     String?
+  latitude  Float?
+  longitude Float?
+
+  sourceRoutes      TrainRoute[] @relation("SourceStation")
+  destinationRoutes TrainRoute[] @relation("DestinationStation")
+
+  @@index([code])
+  @@map("train_stations")
+}
+
+model TrainRoute {
+  id                   String @id @default(uuid())
+  sourceStationId      String
+  destinationStationId String
+  distance             Float
+  duration             String
+
+  sourceStation      TrainStation    @relation("SourceStation", fields: [sourceStationId], references: [id], onDelete: Restrict)
+  destinationStation TrainStation    @relation("DestinationStation", fields: [destinationStationId], references: [id], onDelete: Restrict)
+  schedules          TrainSchedule[]
+
+  @@index([sourceStationId])
+  @@index([destinationStationId])
+  @@map("train_routes")
+}
+
+model TrainSchedule {
+  id            String         @id @default(uuid())
+  trainId       String
+  routeId       String
+  travelDate    DateTime
+  departureTime String
+  arrivalTime   String
+  status        ScheduleStatus @default(SCHEDULED)
+
+  train         Train          @relation(fields: [trainId], references: [id], onDelete: Restrict)
+  route         TrainRoute     @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  trainBookings TrainBooking[]
+
+  @@index([travelDate])
+  @@index([routeId])
+  @@index([trainId])
+  @@map("train_schedules")
+}
+
+model TrainClass {
+  id        String @id @default(uuid())
+  trainId   String
+  classCode String
+  className String
+  fare      Float
+
+  train Train @relation(fields: [trainId], references: [id], onDelete: Cascade)
+
+  @@index([trainId])
+  @@map("train_classes")
+}
+
+model TrainSeat {
+  id          String    @id @default(uuid())
+  trainId     String
+  coachNumber String
+  seatNumber  String
+  berthType   BerthType
+  classCode   String
+
+  train Train @relation(fields: [trainId], references: [id], onDelete: Cascade)
+
+  @@index([trainId])
+  @@map("train_seats")
+}
+
+// ----------------------------------------------------
+// 4. FLIGHT SYSTEM
+// ----------------------------------------------------
+
+model Airline {
+  id   String  @id @default(uuid())
+  name String
+  code String  @unique
+  logo String?
+
+  flights Flight[]
+
+  @@map("airlines")
+}
+
+model Airport {
+  id        String @id @default(uuid())
+  name      String
+  code      String @unique
+  city      String
+  country   String
+  latitude  Float?
+  longitude Float?
+
+  departureSchedules FlightSchedule[] @relation("SourceAirport")
+  arrivalSchedules   FlightSchedule[] @relation("DestinationAirport")
+
+  @@index([code])
+  @@map("airports")
+}
+
+model Flight {
+  id           String  @id @default(uuid())
+  airlineId    String
+  flightNumber String  @unique
+  aircraft     String?
+
+  airline   Airline          @relation(fields: [airlineId], references: [id], onDelete: Restrict)
+  seats     FlightSeat[]
+  addons    FlightAddon[]
+  schedules FlightSchedule[]
+
+  @@index([airlineId])
+  @@map("flights")
+}
+
+model FlightSchedule {
+  id                   String         @id @default(uuid())
+  flightId             String
+  sourceAirportId      String
+  destinationAirportId String
+  departureDate        DateTime
+  departureTime        String
+  arrivalTime          String
+  duration             String
+  fare                 Float
+  status               ScheduleStatus @default(SCHEDULED)
+
+  flight             Flight          @relation(fields: [flightId], references: [id], onDelete: Restrict)
+  sourceAirport      Airport         @relation("SourceAirport", fields: [sourceAirportId], references: [id], onDelete: Restrict)
+  destinationAirport Airport         @relation("DestinationAirport", fields: [destinationAirportId], references: [id], onDelete: Restrict)
+  flightBookings     FlightBooking[]
+
+  @@index([departureDate])
+  @@index([sourceAirportId])
+  @@index([destinationAirportId])
+  @@map("flight_schedules")
+}
+
+model FlightSeat {
+  id          String          @id @default(uuid())
+  flightId    String
+  seatNumber  String
+  seatClass   FlightSeatClass @default(ECONOMY)
+  isAvailable Boolean         @default(true)
+
+  flight Flight @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@index([flightId])
+  @@map("flight_seats")
+}
+
+model FlightAddon {
+  id          String  @id @default(uuid())
+  flightId    String
+  name        String
+  description String?
+  price       Float
+
+  flight Flight @relation(fields: [flightId], references: [id], onDelete: Cascade)
+
+  @@index([flightId])
+  @@map("flight_addons")
+}
+
+// ----------------------------------------------------
+// 5. HOTEL SYSTEM
+// ----------------------------------------------------
+
+model Hotel {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?  @db.Text
+  address      String
+  city         String
+  state        String?
+  country      String
+  latitude     Float?
+  longitude    Float?
+  rating       Float?   @default(0)
+  phone        String?
+  email        String?
+  checkInTime  String?
+  checkOutTime String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  rooms          HotelRoom[]
+  amenities      HotelAmenity[]
+  images         HotelImage[]
+  availabilities HotelAvailability[]
+  hotelBookings  HotelBooking[]
+
+  @@index([city])
+  @@map("hotels")
+}
+
+model HotelRoom {
+  id             String        @id @default(uuid())
+  hotelId        String
+  roomNumber     String?
+  roomType       HotelRoomType @default(DELUXE)
+  capacity       Int
+  pricePerNight  Float
+  totalRooms     Int
+  availableRooms Int
+
+  hotel          Hotel               @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  availabilities HotelAvailability[]
+  hotelBookings  HotelBooking[]
+
+  @@index([hotelId])
+  @@map("hotel_rooms")
+}
+
+model HotelAmenity {
+  id      String @id @default(uuid())
+  hotelId String
+  name    String
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId])
+  @@map("hotel_amenities")
+}
+
+model HotelImage {
+  id       String @id @default(uuid())
+  hotelId  String
+  imageUrl String
+
+  hotel Hotel @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  @@index([hotelId])
+  @@map("hotel_images")
+}
+
+model HotelAvailability {
+  id             String   @id @default(uuid())
+  hotelId        String
+  roomId         String
+  date           DateTime
+  availableRooms Int
+  price          Float
+
+  hotel Hotel     @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+  room  HotelRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([date])
+  @@index([hotelId])
+  @@index([roomId])
+  @@map("hotel_availabilities")
+}
+
+// ----------------------------------------------------
+// 6. UNIVERSAL BOOKING & DETAILS
+// ----------------------------------------------------
+
+model Booking {
+  id               String        @id @default(uuid())
+  userId           String
+  bookingReference String        @unique
+  bookingType      BookingType
+  status           BookingStatus @default(PENDING)
+  totalAmount      Float
+  bookingDate      DateTime      @default(now())
+  travelDate       DateTime
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user           User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  passengers     BookingPassenger[]
+  payments       Payment[]
+  cancellations  Cancellation[]
+  refunds        Refund[]
+  reviews        Review[]
+  supportTickets SupportTicket[]
+  safetyReports  SafetyReport[]
+  tripShares     TripShare[]
+
+  busBooking    BusBooking?
+  trainBooking  TrainBooking?
+  flightBooking FlightBooking?
+  hotelBooking  HotelBooking?
+
+  @@index([bookingReference])
+  @@index([userId])
+  @@index([travelDate])
+  @@index([bookingType])
+  @@map("bookings")
+}
+
+model BookingPassenger {
+  id          String   @id @default(uuid())
+  bookingId   String
+  name        String
+  age         Int
+  gender      String
+  phone       String?
+  email       String?
+  seatNumber  String?
+  berthNumber String?
+  roomNumber  String?
+  createdAt   DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@map("booking_passengers")
+}
+
+model BusBooking {
+  id             String  @id @default(uuid())
+  bookingId      String  @unique
+  scheduleId     String
+  boardingStopId String?
+  droppingStopId String?
+
+  booking      Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  schedule     BusSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+  boardingStop BusStop?    @relation("BoardingStop", fields: [boardingStopId], references: [id], onDelete: SetNull)
+  droppingStop BusStop?    @relation("DroppingStop", fields: [droppingStopId], references: [id], onDelete: SetNull)
+
+  @@index([scheduleId])
+  @@map("bus_bookings")
+}
+
+model TrainBooking {
+  id         String @id @default(uuid())
+  bookingId  String @unique
+  scheduleId String
+  classCode  String
+
+  booking  Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  schedule TrainSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  @@index([scheduleId])
+  @@map("train_bookings")
+}
+
+model FlightBooking {
+  id         String @id @default(uuid())
+  bookingId  String @unique
+  scheduleId String
+
+  booking  Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  schedule FlightSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
+
+  @@index([scheduleId])
+  @@map("flight_bookings")
+}
+
+model HotelBooking {
+  id             String   @id @default(uuid())
+  bookingId      String   @unique
+  hotelId        String
+  roomId         String
+  checkInDate    DateTime
+  checkOutDate   DateTime
+  numberOfRooms  Int
+  numberOfGuests Int
+
+  booking Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  hotel   Hotel     @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  room    HotelRoom @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  @@index([hotelId])
+  @@index([roomId])
+  @@map("hotel_bookings")
+}
+
+// ----------------------------------------------------
+// 7. FINANCIAL, REVIEWS & MARKETING
+// ----------------------------------------------------
+
+model Payment {
+  id               String        @id @default(uuid())
+  bookingId        String
+  paymentReference String        @unique
+  amount           Float
+  method           PaymentMethod
+  status           PaymentStatus @default(PENDING)
+  paidAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  refunds Refund[]
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model Cancellation {
+  id              String             @id @default(uuid())
+  bookingId       String
+  reason          String?
+  cancelledAt     DateTime           @default(now())
+  cancellationFee Float
+  refundAmount    Float
+  status          CancellationStatus @default(REQUESTED)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+
+  @@index([bookingId])
+  @@map("cancellations")
+}
+
+model Refund {
+  id              String       @id @default(uuid())
+  bookingId       String
+  paymentId       String?
+  amount          Float
+  status          RefundStatus @default(PENDING)
+  refundReference String?      @unique
+  processedAt     DateTime?
+  createdAt       DateTime     @default(now())
+
+  booking Booking  @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@index([paymentId])
+  @@map("refunds")
+}
+
+model Offer {
+  id               String       @id @default(uuid())
+  title            String
+  description      String?
+  code             String?
+  discountType     DiscountType
+  discountValue    Float
+  maxDiscount      Float?
+  minBookingAmount Float?
+  validFrom        DateTime
+  validUntil       DateTime
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@map("offers")
+}
+
+model Coupon {
+  id               String       @id @default(uuid())
+  code             String       @unique
+  description      String?
+  discountType     DiscountType
+  discountValue    Float
+  maxDiscount      Float?
+  minBookingAmount Float?
+  usageLimit       Int?
+  usedCount        Int          @default(0)
+  validFrom        DateTime
+  validUntil       DateTime
+  isActive         Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@map("coupons")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(GENERAL)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ----------------------------------------------------
+// 8. REAL-TIME TRACKING, ALERTS & SUPPORT
+// ----------------------------------------------------
+
+model BusTracking {
+  id               String   @id @default(uuid())
+  scheduleId       String
+  latitude         Float
+  longitude        Float
+  speed            Float?
+  currentLocation  String?
+  estimatedArrival String?
+  updatedAt        DateTime @updatedAt
+
+  schedule BusSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@map("bus_trackings")
+}
+
+model DelayAlert {
+  id           String   @id @default(uuid())
+  scheduleId   String
+  delayMinutes Int
+  message      String?
+  createdAt    DateTime @default(now())
+
+  schedule BusSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@map("delay_alerts")
+}
+
+model TripShare {
+  id         String   @id @default(uuid())
+  bookingId  String
+  userId     String
+  shareToken String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([userId])
+  @@map("trip_shares")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  bookingId String?
+  rating    Int
+  title     String?
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([bookingId])
+  @@map("reviews")
+}
+
+model SupportTicket {
+  id          String         @id @default(uuid())
+  userId      String
+  bookingId   String?
+  subject     String
+  description String         @db.Text
+  status      TicketStatus   @default(OPEN)
+  priority    TicketPriority @default(MEDIUM)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([bookingId])
+  @@map("support_tickets")
+}
+
+model SafetyReport {
+  id          String             @id @default(uuid())
+  userId      String
+  bookingId   String?
+  type        String
+  description String             @db.Text
+  status      SafetyReportStatus @default(OPEN)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([bookingId])
+  @@map("safety_reports")
+}
