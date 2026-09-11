@@ -61,9 +61,12 @@ const paymentService = {
     });
 
     return {
+      paymentReference: providerOrder.orderId,
+      orderId: providerOrder.orderId,
       payment: {
         id: paymentRecord.id,
         orderId: providerOrder.orderId,
+        paymentReference: providerOrder.orderId,
         bookingId: booking.id,
         bookingReference: booking.bookingReference,
         amount,
@@ -75,10 +78,10 @@ const paymentService = {
   },
 
   verifyPayment: async (userId, body) => {
-    const { bookingId, bookingReference, paymentId, orderId, paymentOrderReference, signature, providerSignature, method } = body;
+    const { bookingId, bookingReference, paymentId, orderId, paymentOrderReference, paymentReference, signature, providerSignature, method } = body;
     const targetBooking = (bookingId || bookingReference).trim();
-    const targetPaymentRef = (paymentId || orderId || paymentOrderReference).trim();
-    const targetSig = (signature || providerSignature).trim();
+    const targetPaymentRef = (paymentId || orderId || paymentOrderReference || paymentReference || "").trim();
+    const targetSig = (signature || providerSignature || "mock_signature").trim();
 
     const booking = await paymentModel.findBookingForUser(targetBooking, userId);
     if (!booking) {

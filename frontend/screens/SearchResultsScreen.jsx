@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, RefreshControl } from "react-native";
 import {
   ArrowLeft,
   SlidersHorizontal,
@@ -13,88 +13,64 @@ import {
 } from "lucide-react-native";
 import { CardSkeleton } from "../components/SkeletonLoader";
 import EmptyState from "../components/EmptyState";
+import busService from "../services/busService";
 
-const buses = [
-  {
-    id: "1",
-    operator: "Neeta Tours & Travels",
-    rating: 4.4,
-    departure: "08:00 PM",
-    arrival: "11:00 PM",
-    duration: "3h",
-    from: "Mumbai",
-    to: "Pune",
-    type: "Volvo AC Sleeper",
-    price: 750,
-    seats: 24,
-    onTime: 92,
-    score: 4.5,
-    bookingAccuracy: 98,
-  },
-  {
-    id: "2",
-    operator: "Shivneri Travels",
-    rating: 4.2,
-    departure: "09:00 PM",
-    arrival: "12:30 AM",
-    duration: "3.5h",
-    from: "Mumbai",
-    to: "Pune",
-    type: "Volvo AC Sleeper",
-    price: 800,
-    seats: 18,
-    onTime: 88,
-    score: 4.2,
-    bookingAccuracy: 96,
-  },
-  {
-    id: "3",
-    operator: "VRL Travels",
-    rating: 4.5,
-    departure: "10:00 PM",
-    arrival: "01:30 AM",
-    duration: "3.5h",
-    from: "Mumbai",
-    to: "Pune",
-    type: "Volvo AC Sleeper",
-    price: 900,
-    seats: 12,
-    onTime: 94,
-    score: 4.6,
-    bookingAccuracy: 99,
-  },
-  {
-    id: "4",
-    operator: "Sai Travels",
-    rating: 4.0,
-    departure: "11:00 PM",
-    arrival: "02:00 AM",
-    duration: "3h",
-    from: "Mumbai",
-    to: "Pune",
-    type: "AC Sleeper",
-    price: 700,
-    seats: 30,
-    onTime: 82,
-    score: 4.0,
-    bookingAccuracy: 94,
-  },
-];
+// Map backend schedule to UI bus shape
+function mapScheduleToBus(sched) {
+  return {
+    id: sched.id,
+    operator: sched.bus?.operator?.name || 'Bus Operator',
+    rating: sched.bus?.operator?.rating || 4.0,
+    departure: sched.departureTime || '—',
+    arrival: sched.arrivalTime || '—',
+    duration: sched.route?.duration || '—',
+    from: sched.route?.source || '—',
+    to: sched.route?.destination || '—',
+    type: sched.bus?.busType || 'Bus',
+    price: sched.fare || 0,
+    seats: sched.availableSeats ?? '?',
+    onTime: 90,
+    score: sched.bus?.operator?.rating || 4.0,
+    bookingAccuracy: 95,
+  };
+}
 
 export default function SearchResultsScreen({ onNavigate, booking, setBooking }) {
   const [sort, setSort] = useState("Price");
   const [loading, setLoading] = useState(true);
+  const [buses, setBuses] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, [sort]);
+  const fetchBuses = async (showRefreshing = false) => {
+    try {
+      if (showRefreshing) setRefreshing(true);
+      else setLoading(true);
+
+      const res = await busService.searchBuses({
+        source: booking.from || '',
+        destination: booking.to || '',
+        date: booking.date || new Date().toISOString().split('T')[0],
+        passengers: booking.passengers || 1,
+      });
+
+      const schedules = res?.data?.schedules || res?.data?.buses || [];
+      setBuses(schedules.map(mapScheduleToBus));
+    } catch {
+      setBuses([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => { fetchBuses(); }, [booking.from, booking.to, booking.date]);
 
   const sorted = [...buses].sort((a, b) => {
     if (sort === "Price") return a.price - b.price;
     if (sort === "Rating") return b.rating - a.rating;
     return a.departure.localeCompare(b.departure);
   });
+
 
   return (
     <View style={styles.container}>

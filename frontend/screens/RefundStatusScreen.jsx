@@ -11,6 +11,10 @@ const refundSteps = [
 ];
 
 export default function RefundStatusScreen({ onNavigate, booking }) {
+  const rawPrice = booking.totalAmount || 1540;
+  const refundAmount = Math.round(rawPrice * 0.9);
+  const refCode = booking.pnr || booking.bookingReference || 'RF-881920';
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -21,7 +25,7 @@ export default function RefundStatusScreen({ onNavigate, booking }) {
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>Refund Status Tracker</Text>
-            <Text style={styles.headerSub}>Transaction Ref: #RF-881920</Text>
+            <Text style={styles.headerSub}>Transaction Ref: #{refCode}</Text>
           </View>
         </View>
       </View>
@@ -33,7 +37,7 @@ export default function RefundStatusScreen({ onNavigate, booking }) {
             <Landmark size={20} color="#059669" />
             <Text style={styles.bannerTitle}>REFUND IN PROGRESS</Text>
           </View>
-          <Text style={styles.amountText}>₹1,386</Text>
+          <Text style={styles.amountText}>₹{refundAmount}</Text>
           <Text style={styles.subText}>Refund initiated to original UPI / Bank account. Estimated arrival in 24-48 hours.</Text>
         </View>
 

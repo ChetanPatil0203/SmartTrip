@@ -13,17 +13,15 @@ const router = express.Router();
 // PROTECTED PAYMENT ROUTES (JWT AUTH REQUIRED)
 // ----------------------------------------------------
 
-// Create Payment Order (POST /api/payments/create-order)
+// Create Payment Order (POST /api/payments/create-order and /api/payments/initiate)
 router.post("/create-order", authMiddleware, createOrder);
+router.post("/initiate", authMiddleware, createOrder);
 
 // Verify Payment (POST /api/payments/verify)
 router.post("/verify", authMiddleware, verifyPayment);
 
-// Get Payment by Booking ID (GET /api/payments/booking/:bookingId)
-// MUST COME BEFORE GET /:id TO PREVENT ROUTE AMBIGUITY
+// Get Payment by Booking ID (GET /api/payments/booking/:bookingId and GET /api/payments/:bookingId)
 router.get("/booking/:bookingId", authMiddleware, getPaymentByBooking);
-
-// Get Payment by ID (GET /api/payments/:id)
-router.get("/:id", authMiddleware, getPaymentById);
+router.get("/:bookingId", authMiddleware, getPaymentByBooking);
 
 module.exports = router;

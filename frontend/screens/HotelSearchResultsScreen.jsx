@@ -13,6 +13,7 @@ import {
 } from "lucide-react-native";
 import { CardSkeleton } from "../components/SkeletonLoader";
 import EmptyState from "../components/EmptyState";
+import { hotelService } from "../services/travelService";
 
 const mockHotels = [
   {
@@ -75,11 +76,50 @@ const mockHotels = [
 
 export default function HotelSearchResultsScreen({ onNavigate, booking, setBooking }) {
   const [loading, setLoading] = useState(true);
+  const [hotels, setHotels] = useState(mockHotels);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    let isMounted = true;
+    setLoading(true);
+    hotelService.searchHotels({
+      city: booking.hotelDestination || 'Goa',
+      checkIn: booking.checkInDate || new Date().toISOString().split('T')[0],
+      checkOut: booking.checkOutDate || new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      rooms: booking.hotelRooms || 1,
+      guests: booking.hotelGuests || 2,
+    })
+      .then(res => {
+        if (!isMounted) return;
+        const hotelList = res?.data?.hotels || [];
+        if (hotelList.length > 0) {
+          const mapped = hotelList.map(h => ({
+            id: h.id,
+            name: h.name,
+            location: `${h.address || ''}, ${h.city || ''}`.trim(),
+            distance: 'City Center',
+            starRating: h.starRating || 4,
+            guestRating: String(h.rating || '4.5'),
+            reviewsCount: '250+',
+            pricePerNight: h.startingPrice || 3500,
+            taxes: Math.round((h.startingPrice || 3500) * 0.12),
+            cancellation: 'Free Cancellation available',
+            amenities: h.amenities || ['Wi-Fi', 'AC', 'Breakfast'],
+            color: '#059669',
+          }));
+          setHotels(mapped);
+        } else {
+          setHotels(mockHotels);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setHotels(mockHotels);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [booking.hotelDestination, booking.checkInDate, booking.checkOutDate]);
 
   const handleSelectHotel = (hotel) => {
     setBooking({
@@ -108,7 +148,7 @@ export default function HotelSearchResultsScreen({ onNavigate, booking, setBooki
             </Text>
             <Text style={styles.headerSub}>
               {booking.checkInDate || "Today"} - {booking.checkOutDate || "Tomorrow"} ·{" "}
-              {booking.hotelGuests || 2} Guests
+              {booking.hotelGuests || "2 Guests"}
             </Text>
           </View>
           <TouchableOpacity
@@ -128,7 +168,7 @@ export default function HotelSearchResultsScreen({ onNavigate, booking, setBooki
             <CardSkeleton />
             <CardSkeleton />
           </>
-        ) : mockHotels.length === 0 ? (
+        ) : hotels.length === 0 ? (
           <EmptyState
             title="No Hotels Found"
             subtitle="Try searching for a different destination or altering guest options."
@@ -136,7 +176,7 @@ export default function HotelSearchResultsScreen({ onNavigate, booking, setBooki
             actionLabel="Change Filters"
           />
         ) : (
-          mockHotels.map((h) => (
+          hotels.map((h) => (
             <TouchableOpacity
               key={h.id}
               onPress={() => handleSelectHotel(h)}

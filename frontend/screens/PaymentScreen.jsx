@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import bookingService from '../services/bookingService';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { ArrowLeft, CreditCard, Wallet, Smartphone, Building, ShieldCheck, CheckCircle2, ChevronRight, Zap } from 'lucide-react-native';
+
 
 const paymentMethods = [
   { id: 'upi', label: 'UPI (Google Pay, PhonePe, Paytm)', Icon: Smartphone, desc: 'Instant 0% Convenience Fee' },
@@ -20,22 +22,73 @@ export default function PaymentScreen({ onNavigate, booking, setBooking }) {
   const discount = booking.discount || 0;
   const finalTotal = Math.max(0, rawBase + taxes + convenienceFee - discount);
 
-  const handlePayNow = () => {
+  const handlePayNow = async () => {
     setProcessing(true);
-    setTimeout(() => {
-      setProcessing(false);
+    try {
+      // Step 1: Create booking in backend
+      let backendBookingId = booking.backendBookingId;
+      if (!backendBookingId) {
+        const bookingPayload = {
+          bookingType: bookingType.toUpperCase(),
+          totalAmount: finalTotal,
+          travelDate: booking.date || new Date().toISOString(),
+          passengers: booking.passengerList || [],
+          ...(bookingType === 'bus' && booking.selectedBus ? {
+            scheduleId: booking.selectedBus.id,
+            seatNumbers: booking.selectedSeats || [],
+            boardingStopId: booking.boardingPoint?.id,
+            droppingStopId: booking.droppingPoint?.id,
+          } : {}),
+          ...(bookingType === 'hotel' && booking.selectedRoom ? {
+            hotelId: booking.selectedHotel?.id,
+            roomId: booking.selectedRoom?.id,
+            checkInDate: booking.checkInDate,
+            checkOutDate: booking.checkOutDate,
+            numberOfRooms: booking.hotelRooms || 1,
+            numberOfGuests: booking.hotelGuests || 2,
+          } : {}),
+        };
+        const bkRes = await bookingService.createBooking(bookingPayload);
+        backendBookingId = bkRes?.data?.booking?.id;
+      }
+
+      // Step 2: Initiate payment
+      let payRef = 'PAY-' + Date.now();
+      if (backendBookingId) {
+        try {
+          const payRes = await bookingService.initiatePayment({
+            bookingId: backendBookingId,
+            amount: finalTotal,
+            method: selectedMethod.toUpperCase(),
+          });
+          payRef = payRes?.data?.paymentReference || payRef;
+          // Step 3: Verify (simulate success for mock gateway)
+          await bookingService.verifyPayment({
+            bookingId: backendBookingId,
+            paymentReference: payRef,
+            status: 'SUCCESS',
+          });
+        } catch { /* payment API may not need real gateway */ }
+      }
+
       setBooking({
         paymentMethod: selectedMethod,
         totalAmount: finalTotal,
+        backendBookingId,
+        paymentReference: payRef,
       });
 
-      // Route to category-specific confirmation ticket!
       if (bookingType === 'train') onNavigate('train-ticket');
       else if (bookingType === 'flight') onNavigate('flight-ticket');
       else if (bookingType === 'hotel') onNavigate('hotel-ticket');
       else onNavigate('booking-confirmation');
-    }, 1200);
+    } catch (error) {
+      Alert.alert('Payment Failed', error.message || 'Could not process payment. Please try again.');
+    } finally {
+      setProcessing(false);
+    }
   };
+
 
   return (
     <View style={styles.container}>

@@ -1,14 +1,51 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import BottomNav from '../components/BottomNav';
 import { User, Ticket, Tag, Bell, Shield, HelpCircle, Settings, LogOut, ChevronRight, Users, CreditCard } from 'lucide-react-native';
+import authService from '../services/authService';
 
 export default function ProfileScreen({ onNavigate }) {
-  const profile = {
-    name: 'Rahul Sharma',
-    mobile: '+91 9876543210',
-    email: 'rahul.sharma@example.com',
+  const [profile, setProfile] = useState({
+    name: 'SmartTrip Traveler',
+    mobile: '—',
+    email: '—',
+  });
+
+  useEffect(() => {
+    // 1. Load cached user
+    authService.getUser().then(u => {
+      if (u) {
+        setProfile({
+          name: u.name || 'SmartTrip Traveler',
+          mobile: u.phone || u.mobile || '—',
+          email: u.email || '—',
+        });
+      }
+    });
+    // 2. Fetch fresh profile from API
+    authService.getProfile().then(res => {
+      const u = res?.data?.user;
+      if (u) {
+        setProfile({
+          name: u.name || 'SmartTrip Traveler',
+          mobile: u.phone || u.mobile || '—',
+          email: u.email || '—',
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await authService.logout();
+    onNavigate('login');
   };
+
+  const initials = (profile.name || 'ST')
+    .split(' ')
+    .map(p => p[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase();
 
   const menuOptions = [
     { label: 'Saved Passengers & Travelers', screen: 'saved-passengers', Icon: Users, color: '#2563EB' },
@@ -26,11 +63,11 @@ export default function ProfileScreen({ onNavigate }) {
       <View style={styles.header}>
         <View style={styles.profileHeaderRow}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>RS</Text>
+            <Text style={styles.avatarText}>{initials}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.userName}>{profile.name}</Text>
-            <Text style={styles.userMeta}>{profile.mobile} · {profile.email}</Text>
+            <Text style={styles.userMeta}>{profile.mobile} {profile.email !== '—' ? `· ${profile.email}` : ''}</Text>
           </View>
         </View>
       </View>
@@ -58,7 +95,7 @@ export default function ProfileScreen({ onNavigate }) {
 
         {/* Logout Button */}
         <TouchableOpacity
-          onPress={() => onNavigate('login')}
+          onPress={handleLogout}
           style={styles.logoutBtn}
           activeOpacity={0.8}
         >

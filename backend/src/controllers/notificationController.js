@@ -90,6 +90,22 @@ const deleteNotification = async (req, res, next) => {
   }
 };
 
+// POST /api/notifications/fcm-token
+const registerFCMToken = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const { token, platform = "android" } = req.body;
+    if (!token) {
+      return sendError(res, "Device token is required", 400);
+    }
+    const fcmService = require("../services/fcmService");
+    const result = await fcmService.registerDeviceToken(userId, token, platform);
+    return sendSuccess(res, "Device token registered for push notifications", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUserNotifications,
   getUnreadCount,
@@ -97,4 +113,5 @@ module.exports = {
   markAsRead,
   markAllAsRead,
   deleteNotification,
+  registerFCMToken,
 };

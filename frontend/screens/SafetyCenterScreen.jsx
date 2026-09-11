@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { ArrowLeft, ShieldAlert, Phone, Share2, MapPin, AlertTriangle, Headset, CheckCircle2 } from 'lucide-react-native';
+import { safetyService } from '../services/miscService';
 
 export default function SafetyCenterScreen({ onNavigate }) {
   const [sosActive, setSosActive] = useState(false);
 
-  const triggerSOS = () => {
+  const triggerSOS = async () => {
     setSosActive(true);
+    try {
+      await safetyService.createReport({
+        type: 'SOS_EMERGENCY',
+        description: 'Emergency SOS triggered by user from Safety Center',
+      });
+    } catch {}
     setTimeout(() => {
       setSosActive(false);
-    }, 3000);
+    }, 4000);
   };
 
   return (

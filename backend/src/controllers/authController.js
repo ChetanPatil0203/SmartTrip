@@ -13,8 +13,8 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    const result = await userService.loginUser({ email, password });
+    const { email, phone, password } = req.body;
+    const result = await userService.loginUser({ email, phone, password });
     return sendSuccess(res, "Login successful", result, 200);
   } catch (error) {
     next(error);

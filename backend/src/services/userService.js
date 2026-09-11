@@ -81,24 +81,35 @@ const userService = {
     };
   },
 
-  loginUser: async ({ email, password }) => {
-    if (!email || !password) {
-      const error = new Error("Email and password are required");
+  loginUser: async ({ email, phone, password }) => {
+    const loginIdentifier = (email || phone || "").trim();
+    if (!loginIdentifier || !password) {
+      const error = new Error("Email/Phone and password are required");
       error.statusCode = 400;
       throw error;
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    const user = await UserModel.findByEmail(normalizedEmail);
+    let user = null;
+    if (loginIdentifier.includes("@")) {
+      user = await UserModel.findByEmail(loginIdentifier.toLowerCase());
+    } else {
+      user = await UserModel.findByPhone(loginIdentifier);
+    }
+
+    // Fallback search if not found
     if (!user) {
-      const error = new Error("Invalid email or password");
+      user = (await UserModel.findByEmail(loginIdentifier.toLowerCase())) || (await UserModel.findByPhone(loginIdentifier));
+    }
+
+    if (!user) {
+      const error = new Error("Invalid credentials");
       error.statusCode = 401;
       throw error;
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      const error = new Error("Invalid email or password");
+      const error = new Error("Invalid credentials");
       error.statusCode = 401;
       throw error;
     }

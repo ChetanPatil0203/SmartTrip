@@ -1,11 +1,37 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Phone, Lock, Eye, EyeOff, ChevronRight } from 'lucide-react-native';
+import authService from '../services/authService';
 
 export default function LoginScreen({ onNavigate }) {
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!mobile.trim()) {
+      Alert.alert('Error', 'Please enter your mobile number');
+      return;
+    }
+    if (!password.trim()) {
+      Alert.alert('Error', 'Please enter your password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authService.login({ phone: mobile.trim(), password });
+      onNavigate('home');
+    } catch (error) {
+      Alert.alert(
+        'Login Failed',
+        error.message || 'Invalid credentials. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -38,6 +64,7 @@ export default function LoginScreen({ onNavigate }) {
                 keyboardType="phone-pad"
                 value={mobile}
                 onChangeText={setMobile}
+                editable={!loading}
               />
             </View>
           </View>
@@ -53,6 +80,7 @@ export default function LoginScreen({ onNavigate }) {
                 secureTextEntry={!showPass}
                 value={password}
                 onChangeText={setPassword}
+                editable={!loading}
               />
               <TouchableOpacity onPress={() => setShowPass(!showPass)}>
                 {showPass ? <EyeOff size={18} color="#9CA3AF" /> : <Eye size={18} color="#9CA3AF" />}
@@ -66,11 +94,16 @@ export default function LoginScreen({ onNavigate }) {
         </View>
 
         <TouchableOpacity
-          onPress={() => onNavigate('home')}
-          style={styles.loginBtn}
+          onPress={handleLogin}
+          style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={styles.loginBtnText}>LOGIN</Text>
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.loginBtnText}>LOGIN</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.dividerRow}>
@@ -110,176 +143,57 @@ export default function LoginScreen({ onNavigate }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  headerGradient: {
-    height: 128,
-    backgroundColor: '#D13239',
-    position: 'relative',
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  headerGradient: { height: 128, backgroundColor: '#D13239', position: 'relative' },
   backBtn: {
-    position: 'absolute',
-    top: 24,
-    left: 16,
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute', top: 24, left: 16, width: 36, height: 36,
+    borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
   },
   headerCurved: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 32,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 32,
+    backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
   },
-  content: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    gap: 24,
-  },
-  titleBlock: {
-    marginTop: -8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  subtitle: {
-    color: '#9CA3AF',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  form: {
-    gap: 16,
-  },
-  inputGroup: {
-    gap: 6,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    letterSpacing: 0.5,
-  },
+  content: { paddingHorizontal: 24, paddingBottom: 32, gap: 24 },
+  titleBlock: { marginTop: -8 },
+  title: { fontSize: 24, fontWeight: '800', color: '#111827' },
+  subtitle: { color: '#9CA3AF', fontSize: 14, marginTop: 4 },
+  form: { gap: 16 },
+  inputGroup: { gap: 6 },
+  label: { fontSize: 12, fontWeight: '600', color: '#6B7280', letterSpacing: 0.5 },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
+    borderRadius: 16, paddingHorizontal: 16, paddingVertical: 14,
   },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    color: '#111827',
-    padding: 0,
-  },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-  },
-  forgotText: {
-    color: '#D13239',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  input: { flex: 1, fontSize: 14, color: '#111827', padding: 0 },
+  forgotBtn: { alignSelf: 'flex-end' },
+  forgotText: { color: '#D13239', fontSize: 14, fontWeight: '600' },
   loginBtn: {
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: '#D13239',
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    width: '100%', paddingVertical: 16, borderRadius: 16,
+    backgroundColor: '#D13239', alignItems: 'center', justifyContent: 'center',
+    elevation: 4, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8,
   },
-  loginBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#F3F4F6',
-  },
-  dividerText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
+  loginBtnDisabled: { backgroundColor: '#E57373' },
+  loginBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#F3F4F6' },
+  dividerText: { color: '#9CA3AF', fontSize: 12, fontWeight: '500' },
+  socialRow: { flexDirection: 'row', gap: 12 },
   socialBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingVertical: 14,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 10, paddingVertical: 14,
+    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16,
   },
-  socialIconBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  socialIconText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  socialLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
+  socialIconBox: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  socialIconText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
+  socialLabel: { fontSize: 14, fontWeight: '600', color: '#374151' },
   registerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 4, paddingVertical: 8,
   },
-  noAccountText: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  createBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  createText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#D13239',
-  },
+  noAccountText: { fontSize: 14, color: '#6B7280' },
+  createBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  createText: { fontSize: 14, fontWeight: '700', color: '#D13239' },
 });

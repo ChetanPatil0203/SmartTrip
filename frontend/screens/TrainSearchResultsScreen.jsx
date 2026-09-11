@@ -98,13 +98,60 @@ const mockTrains = [
   },
 ];
 
+import { trainService } from "../services/travelService";
+
 export default function TrainSearchResultsScreen({ onNavigate, booking, setBooking }) {
   const [loading, setLoading] = useState(true);
+  const [trains, setTrains] = useState(mockTrains);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    let isMounted = true;
+    setLoading(true);
+    trainService.searchTrains({
+      source: booking.trainFrom || 'Mumbai',
+      destination: booking.trainTo || 'Ahmedabad',
+      date: booking.trainDate || new Date().toISOString().split('T')[0],
+      passengers: 1,
+    })
+      .then(res => {
+        if (!isMounted) return;
+        const schedules = res?.data?.schedules || [];
+        if (schedules.length > 0) {
+          const mapped = schedules.map(sched => ({
+            id: sched.id,
+            number: sched.train?.trainNumber || '12009',
+            name: sched.train?.trainName || 'Express',
+            from: sched.route?.source || booking.trainFrom || 'Mumbai',
+            to: sched.route?.destination || booking.trainTo || 'Ahmedabad',
+            depTime: sched.departureTime || '06:30 AM',
+            arrTime: sched.arrivalTime || '01:10 PM',
+            duration: sched.route?.duration || '6h 40m',
+            runningDays: ['M', 'T', 'W', 'T', 'F', 'S'],
+            classes: sched.classes?.length > 0 ? sched.classes.map(c => ({
+              code: c.classCode,
+              name: c.className || c.classCode,
+              price: c.fare || 920,
+              status: c.availableSeats > 0 ? `Available ${c.availableSeats}` : 'WL 12',
+              statusType: c.availableSeats > 0 ? 'available' : 'waitlist',
+            })) : [
+              { code: '3A', name: 'AC 3 Tier', price: sched.baseFare || 1210, status: 'Available 24', statusType: 'available' },
+              { code: 'SL', name: 'Sleeper', price: Math.round((sched.baseFare || 1210) * 0.4), status: 'Available 48', statusType: 'available' },
+            ],
+          }));
+          setTrains(mapped);
+        } else {
+          setTrains(mockTrains);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setTrains(mockTrains);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [booking.trainFrom, booking.trainTo, booking.trainDate]);
 
   const handleSelectTrain = (train, cls) => {
     setBooking({
@@ -134,7 +181,7 @@ export default function TrainSearchResultsScreen({ onNavigate, booking, setBooki
               {booking.trainFrom || "Mumbai"} ➔ {booking.trainTo || "Ahmedabad"}
             </Text>
             <Text style={styles.headerSub}>
-              {booking.trainDate || "28 May 2024"} · {mockTrains.length} Trains Found
+              {booking.trainDate || "28 May 2024"} · {trains.length} Trains Found
             </Text>
           </View>
           <TouchableOpacity
@@ -154,7 +201,7 @@ export default function TrainSearchResultsScreen({ onNavigate, booking, setBooki
             <CardSkeleton />
             <CardSkeleton />
           </>
-        ) : mockTrains.length === 0 ? (
+        ) : trains.length === 0 ? (
           <EmptyState
             title="No Trains Available"
             subtitle="Try selecting a different travel date or alternate stations."
@@ -162,7 +209,7 @@ export default function TrainSearchResultsScreen({ onNavigate, booking, setBooki
             actionLabel="Modify Search"
           />
         ) : (
-          mockTrains.map((train) => (
+          trains.map((train) => (
             <View key={train.number} style={styles.trainCard}>
               {/* Top Bar */}
               <View style={styles.cardHeader}>

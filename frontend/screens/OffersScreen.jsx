@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import BottomNav from '../components/BottomNav';
 import { ArrowLeft, Tag, Copy, Check, Bus, Train, Plane, Building2, ChevronRight, Gift } from 'lucide-react-native';
+import { offerService } from '../services/miscService';
 
 const categoryOffers = [
   {
@@ -57,13 +58,42 @@ const categoryOffers = [
 export default function OffersScreen({ onNavigate }) {
   const [selectedCat, setSelectedCat] = useState('all');
   const [copiedCode, setCopiedCode] = useState(null);
+  const [apiOffers, setApiOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    offerService.getOffers({ limit: 50 })
+      .then(res => {
+        const offers = res?.data?.offers || [];
+        if (offers.length > 0) {
+          // Map backend offers to UI shape
+          const mapped = offers.map(o => ({
+            id: o.id,
+            category: (o.travelType || 'all').toLowerCase(),
+            title: o.title,
+            code: o.couponCode || '',
+            discount: o.discountType === 'PERCENTAGE' ? `${o.discountValue}% OFF` : `₹${o.discountValue} OFF`,
+            validity: o.validUntil ? `Valid till ${new Date(o.validUntil).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'Limited time',
+            minBooking: o.minBookingAmount ? `₹${o.minBookingAmount}` : 'No minimum',
+            terms: o.description || '',
+            color: '#D13239',
+            bg: '#FFF0F0',
+          }));
+          setApiOffers(mapped);
+        } else {
+          setApiOffers(categoryOffers);
+        }
+      })
+      .catch(() => setApiOffers(categoryOffers))
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleCopy = (code) => {
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const filteredOffers = categoryOffers.filter(o => selectedCat === 'all' || o.category === selectedCat);
+  const filteredOffers = apiOffers.filter(o => selectedCat === 'all' || o.category === selectedCat);
 
   return (
     <View style={styles.container}>

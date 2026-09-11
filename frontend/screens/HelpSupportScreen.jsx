@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { ArrowLeft, MessageSquare, Phone, HelpCircle, ChevronDown, ChevronUp, ChevronRight, Bus, Train, Plane, Building2, ShieldAlert } from 'lucide-react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { ArrowLeft, MessageSquare, Phone, HelpCircle, ChevronDown, ChevronUp, ChevronRight, Bus, Train, Plane, Building2, ShieldAlert, Send } from 'lucide-react-native';
+import { supportService } from '../services/miscService';
+
 
 const supportCategories = [
   { id: 'bus', title: 'Bus Booking & Tracking Issues', Icon: Bus, color: '#D13239' },
@@ -19,6 +21,35 @@ const faqs = [
 
 export default function HelpSupportScreen({ onNavigate }) {
   const [openFaq, setOpenFaq] = useState(0);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketDesc, setTicketDesc] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmitTicket = async () => {
+    if (!ticketSubject.trim() || ticketSubject.trim().length < 3) {
+      return Alert.alert('Error', 'Please enter a subject (at least 3 characters)');
+    }
+    if (!ticketDesc.trim() || ticketDesc.trim().length < 10) {
+      return Alert.alert('Error', 'Please describe your issue (at least 10 characters)');
+    }
+    setSubmitting(true);
+    try {
+      await supportService.createTicket({
+        subject: ticketSubject.trim(),
+        description: ticketDesc.trim(),
+        priority: 'MEDIUM',
+      });
+      Alert.alert('Ticket Raised!', 'Your support ticket has been submitted. Our team will respond within 24 hours.', [
+        { text: 'OK', onPress: () => { setShowTicketForm(false); setTicketSubject(''); setTicketDesc(''); } },
+      ]);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not submit ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   return (
     <View style={styles.container}>
@@ -50,6 +81,58 @@ export default function HelpSupportScreen({ onNavigate }) {
             <Text style={styles.contactSub}>1800-SMART-TRIP</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Raise a Support Ticket */}
+        <Text style={styles.sectionTitle}>RAISE A SUPPORT TICKET</Text>
+        <TouchableOpacity
+          style={styles.ticketToggleBtn}
+          onPress={() => setShowTicketForm(!showTicketForm)}
+          activeOpacity={0.8}
+        >
+          <MessageSquare size={16} color="#D13239" />
+          <Text style={styles.ticketToggleText}>{showTicketForm ? 'Hide Form' : 'New Support Ticket'}</Text>
+          {showTicketForm ? <ChevronUp size={14} color="#D13239" /> : <ChevronDown size={14} color="#94A3B8" />}
+        </TouchableOpacity>
+
+        {showTicketForm && (
+          <View style={styles.ticketForm}>
+            <Text style={styles.inputLabel}>SUBJECT</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="e.g. Payment not refunded"
+              placeholderTextColor="#9CA3AF"
+              value={ticketSubject}
+              onChangeText={setTicketSubject}
+              editable={!submitting}
+            />
+            <Text style={[styles.inputLabel, { marginTop: 12 }]}>DESCRIPTION</Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              placeholder="Describe your issue in detail..."
+              placeholderTextColor="#9CA3AF"
+              value={ticketDesc}
+              onChangeText={setTicketDesc}
+              multiline
+              numberOfLines={4}
+              editable={!submitting}
+            />
+            <TouchableOpacity
+              style={[styles.submitTicketBtn, submitting && { opacity: 0.7 }]}
+              onPress={handleSubmitTicket}
+              disabled={submitting}
+              activeOpacity={0.8}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Send size={14} color="#fff" />
+                  <Text style={styles.submitTicketBtnText}>SUBMIT TICKET</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Support Categories */}
         <Text style={styles.sectionTitle}>SELECT ISSUE CATEGORY</Text>
@@ -222,4 +305,47 @@ const styles = StyleSheet.create({
     borderTopColor: '#F1F5F9',
     paddingTop: 8,
   },
+  ticketToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF0F0',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  ticketToggleText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#D13239' },
+  ticketForm: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 4,
+  },
+  inputLabel: { fontSize: 11, fontWeight: '700', color: '#6B7280', letterSpacing: 0.5 },
+  textInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+    color: '#111827',
+    marginTop: 6,
+  },
+  textArea: { height: 90, textAlignVertical: 'top' },
+  submitTicketBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#D13239',
+    paddingVertical: 13,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  submitTicketBtnText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

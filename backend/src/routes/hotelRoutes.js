@@ -11,8 +11,9 @@ const {
 const router = express.Router();
 
 // ----------------------------------------------------
-// 1. HOTEL SEARCH / LISTING (GET /api/hotels)
+// 1. HOTEL SEARCH / LISTING (GET /api/hotels & GET /api/hotels/search)
 // ----------------------------------------------------
+router.get("/search", searchHotels);
 router.get("/", searchHotels);
 
 // ----------------------------------------------------

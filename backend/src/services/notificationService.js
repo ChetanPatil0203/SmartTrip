@@ -1,4 +1,5 @@
 const notificationModel = require("../models/notificationModel");
+const fcmService = require("./fcmService");
 
 // Valid NotificationType enum values (matches Prisma schema)
 const VALID_TYPES = ["BOOKING", "PAYMENT", "DELAY", "CANCELLATION", "REFUND", "OFFER", "GENERAL"];
@@ -23,7 +24,16 @@ const notificationService = {
       throw new Error(`Invalid notification type: ${type}`);
     }
 
-    return await notificationModel.create({ userId, type: normType, title, message });
+    const notif = await notificationModel.create({ userId, type: normType, title, message });
+
+    // Non-blocking trigger push notification to registered devices
+    fcmService.sendPushNotification(userId, {
+      title,
+      body: message,
+      data: { id: notif.id, type: normType },
+    }).catch(() => {});
+
+    return notif;
   },
 
   // -------------------------------------------------------

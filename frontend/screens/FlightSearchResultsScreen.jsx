@@ -80,13 +80,56 @@ const mockFlights = [
   },
 ];
 
+import { flightService } from "../services/travelService";
+
 export default function FlightSearchResultsScreen({ onNavigate, booking, setBooking }) {
   const [loading, setLoading] = useState(true);
+  const [flights, setFlights] = useState(mockFlights);
 
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 300);
-    return () => clearTimeout(timer);
-  }, []);
+    let isMounted = true;
+    setLoading(true);
+    flightService.searchFlights({
+      source: booking.flightFrom || 'Mumbai',
+      destination: booking.flightTo || 'Delhi',
+      date: booking.flightDepartureDate || new Date().toISOString().split('T')[0],
+      passengers: 1,
+      flightClass: booking.flightClass,
+    })
+      .then(res => {
+        if (!isMounted) return;
+        const schedules = res?.data?.schedules || [];
+        if (schedules.length > 0) {
+          const mapped = schedules.map(s => ({
+            id: s.id,
+            airline: s.flight?.airline?.name || 'SmartAir',
+            flightNo: s.flight?.flightNumber || 'ST-101',
+            from: s.sourceAirport?.city || booking.flightFrom || 'Mumbai',
+            to: s.destinationAirport?.city || booking.flightTo || 'Delhi',
+            depTime: s.departureTime || '09:30 AM',
+            arrTime: s.arrivalTime || '11:45 AM',
+            duration: s.duration || '2h 15m',
+            stops: s.stops === 0 ? 'Non-stop' : `${s.stops} Stop`,
+            price: s.baseFare || 5490,
+            baggage: '7kg Cabin + 15kg Check-in',
+            meal: 'Complimentary Snack',
+            aircraft: s.flight?.aircraftType || 'Airbus A320',
+            color: '#0284C7',
+          }));
+          setFlights(mapped);
+        } else {
+          setFlights(mockFlights);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setFlights(mockFlights);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, [booking.flightFrom, booking.flightTo, booking.flightDepartureDate, booking.flightClass]);
 
   const handleSelectFlight = (flight) => {
     setBooking({
@@ -134,7 +177,7 @@ export default function FlightSearchResultsScreen({ onNavigate, booking, setBook
             <CardSkeleton />
             <CardSkeleton />
           </>
-        ) : mockFlights.length === 0 ? (
+        ) : flights.length === 0 ? (
           <EmptyState
             title="No Flights Found"
             subtitle="Try adjusting your travel date, passengers, or class selection."
@@ -142,7 +185,7 @@ export default function FlightSearchResultsScreen({ onNavigate, booking, setBook
             actionLabel="Change Search"
           />
         ) : (
-          mockFlights.map((f) => (
+          flights.map((f) => (
             <TouchableOpacity
               key={f.id}
               onPress={() => handleSelectFlight(f)}

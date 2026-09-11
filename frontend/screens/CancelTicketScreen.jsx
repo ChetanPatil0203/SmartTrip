@@ -1,15 +1,28 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { ArrowLeft, AlertTriangle, ShieldCheck, ChevronRight, XCircle } from 'lucide-react-native';
+import bookingService from '../services/bookingService';
 
 export default function CancelTicketScreen({ onNavigate, booking }) {
   const [reason, setReason] = useState('Change of plans');
+  const [cancelling, setCancelling] = useState(false);
   const bookingType = booking.bookingType || 'bus';
   const rawPrice = booking.totalAmount || 1540;
   const cancelFee = Math.round(rawPrice * 0.1);
   const refundAmount = rawPrice - cancelFee;
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
+    setCancelling(true);
+    try {
+      const bId = booking.backendBookingId || booking.id;
+      if (bId) {
+        await bookingService.requestCancellation({
+          bookingId: bId,
+          reason,
+        });
+      }
+    } catch {}
+    setCancelling(false);
     onNavigate('refund-status');
   };
 
@@ -80,11 +93,18 @@ export default function CancelTicketScreen({ onNavigate, booking }) {
       <View style={styles.bottomBar}>
         <TouchableOpacity
           onPress={handleConfirmCancel}
-          style={styles.cancelConfirmBtn}
+          style={[styles.cancelConfirmBtn, cancelling && { opacity: 0.7 }]}
           activeOpacity={0.8}
+          disabled={cancelling}
         >
-          <XCircle size={16} color="#FFFFFF" />
-          <Text style={styles.cancelConfirmText}>Confirm Cancellation & Refund</Text>
+          {cancelling ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <>
+              <XCircle size={16} color="#FFFFFF" />
+              <Text style={styles.cancelConfirmText}>Confirm Cancellation & Refund</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
     </View>

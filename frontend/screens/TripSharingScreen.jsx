@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { ArrowLeft, Share2, Copy, Check, MessageCircle, Phone, Mail, Link2, MapPin, Clock, Bus } from 'lucide-react-native';
+import bookingService from '../services/bookingService';
 
 export default function TripSharingScreen({ onNavigate, booking }) {
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const link = `https://smartbus.in/track/${booking.pnr || 'SB12345678'}`;
+  const [shareLink, setShareLink] = useState(`https://smarttrip.in/track/${booking.pnr || 'ST12345678'}`);
+
+  useEffect(() => {
+    const bId = booking.backendBookingId || booking.id;
+    if (bId) {
+      bookingService.shareTrip(bId)
+        .then(res => {
+          if (res?.data?.shareUrl) {
+            setShareLink(res.data.shareUrl);
+          } else if (res?.data?.shareToken) {
+            setShareLink(`https://smarttrip.in/shared-trips/${res.data.shareToken}`);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [booking]);
 
   const copyLink = () => {
     setCopied(true);
@@ -73,7 +89,7 @@ export default function TripSharingScreen({ onNavigate, booking }) {
             <Text style={styles.cardTitle}>Tracking Link</Text>
           </View>
           <View style={styles.linkBox}>
-            <Text style={styles.linkText} numberOfLines={1}>{link}</Text>
+            <Text style={styles.linkText} numberOfLines={1}>{shareLink}</Text>
             <TouchableOpacity onPress={copyLink}>
               {copied ? <Check size={16} color="#16A34A" strokeWidth={3} /> : <Copy size={16} color="#D13239" />}
             </TouchableOpacity>

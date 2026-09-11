@@ -1,612 +1,325 @@
-import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from "react-native";
-import BottomNav from "../components/BottomNav";
-import EmptyState from "../components/EmptyState";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  ArrowLeft,
-  Clock,
-  CheckCircle,
-  XCircle,
-  MapPin,
-  Armchair,
-  Navigation,
-  X,
-  Ticket,
-  ChevronRight,
-  Bus,
-  Train,
-  Plane,
-  Building2,
-} from "lucide-react-native";
+  View, Text, TouchableOpacity, ScrollView, StyleSheet,
+  ActivityIndicator, RefreshControl, Alert
+} from 'react-native';
+import BottomNav from '../components/BottomNav';
+import EmptyState from '../components/EmptyState';
+import {
+  ArrowLeft, Clock, CheckCircle, XCircle, MapPin,
+  Armchair, Navigation, Ticket, ChevronRight,
+  Bus, Train, Plane, Building2,
+} from 'lucide-react-native';
+import bookingService from '../services/bookingService';
 
-const allTrips = {
-  upcoming: [
-    {
-      pnr: "SB12345678",
-      category: "bus",
-      operator: "Neeta Tours & Travels",
-      date: "25 May 2024",
-      time: "08:00 PM",
-      from: "Mumbai",
-      to: "Pune",
-      seats: "7, 8",
-      price: 1540,
-      status: "Confirmed",
-      ticketScreen: "ticket",
-      trackScreen: "live-tracking",
-    },
-    {
-      pnr: "PNR-TRN882",
-      category: "train",
-      operator: "12009 Shatabdi Express",
-      date: "28 May 2024",
-      time: "06:30 AM",
-      from: "Mumbai Central",
-      to: "Ahmedabad",
-      seats: "Coach B3 - 42",
-      price: 1450,
-      status: "Confirmed",
-      ticketScreen: "train-ticket",
-      trackScreen: "train-live-status",
-    },
-    {
-      pnr: "PNR-FL772",
-      category: "flight",
-      operator: "SmartAir (ST-402)",
-      date: "02 Jun 2024",
-      time: "09:30 AM",
-      from: "Mumbai (BOM)",
-      to: "Delhi (DEL)",
-      seats: "Seat 2A (Win)",
-      price: 5490,
-      status: "Confirmed",
-      ticketScreen: "flight-ticket",
-      trackScreen: null,
-    },
-    {
-      pnr: "ST-HTL-992",
-      category: "hotel",
-      operator: "Taj Holiday Village Resort",
-      date: "10 Jun 2024",
-      time: "02:00 PM",
-      from: "Goa",
-      to: "3 Nights Stay",
-      seats: "Deluxe Sea View",
-      price: 5040,
-      status: "Confirmed",
-      ticketScreen: "hotel-ticket",
-      trackScreen: null,
-    },
-  ],
-  completed: [
-    {
-      pnr: "SB11223344",
-      category: "bus",
-      operator: "Shivneri Travels",
-      date: "10 Apr 2024",
-      time: "07:00 PM",
-      from: "Mumbai",
-      to: "Pune",
-      seats: "12",
-      price: 800,
-      status: "Completed",
-      ticketScreen: "ticket",
-    },
-    {
-      pnr: "TRN-55123",
-      category: "train",
-      operator: "Rajdhani Express",
-      date: "15 Mar 2024",
-      time: "05:00 PM",
-      from: "Mumbai",
-      to: "Delhi",
-      seats: "AC 2A",
-      price: 2290,
-      status: "Completed",
-      ticketScreen: "train-ticket",
-    },
-  ],
-  cancelled: [
-    {
-      pnr: "SB55667788",
-      category: "bus",
-      operator: "Sai Travels",
-      date: "05 Mar 2024",
-      time: "06:00 PM",
-      from: "Pune",
-      to: "Nashik",
-      seats: "5",
-      price: 700,
-      status: "Cancelled",
-      ticketScreen: "ticket",
-    },
-    {
-      pnr: "FL-99124",
-      category: "flight",
-      operator: "IndigoSky (IS-612)",
-      date: "01 Feb 2024",
-      time: "11:15 AM",
-      from: "Pune",
-      to: "Delhi",
-      seats: "14B",
-      price: 4890,
-      status: "Cancelled",
-      ticketScreen: "flight-ticket",
-    },
-  ],
+const CATEGORY_ICON = {
+  BUS: Bus, TRAIN: Train, FLIGHT: Plane, HOTEL: Building2,
 };
 
-const categoryIcons = {
-  bus: { Icon: Bus, label: "BUS", color: "#D13239", bg: "#FFF0F0" },
-  train: { Icon: Train, label: "TRAIN", color: "#2563EB", bg: "#EFF6FF" },
-  flight: { Icon: Plane, label: "FLIGHT", color: "#0284C7", bg: "#F0F9FF" },
-  hotel: { Icon: Building2, label: "HOTEL", color: "#059669", bg: "#ECFDF5" },
+const STATUS_CONFIG = {
+  CONFIRMED: { color: '#059669', bg: '#ECFDF5', Icon: CheckCircle },
+  PENDING: { color: '#D97706', bg: '#FEF3C7', Icon: Clock },
+  CANCELLED: { color: '#EF4444', bg: '#FFF0F0', Icon: XCircle },
+  COMPLETED: { color: '#6366F1', bg: '#EEF2FF', Icon: CheckCircle },
+  FAILED: { color: '#EF4444', bg: '#FFF0F0', Icon: XCircle },
 };
 
-const tabCfg = {
-  upcoming: { Icon: Clock, color: "#2563EB", bg: "#EFF6FF", label: "UPCOMING" },
-  completed: { Icon: CheckCircle, color: "#16A34A", bg: "#F0FFF4", label: "COMPLETED" },
-  cancelled: { Icon: XCircle, color: "#D13239", bg: "#FFF0F0", label: "CANCELLED" },
-};
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
-export default function MyTripsScreen({ onNavigate, booking }) {
-  const [statusTab, setStatusTab] = useState("upcoming");
-  const [catFilter, setCatFilter] = useState("all");
+function getBookingInfo(booking) {
+  switch (booking.bookingType) {
+    case 'BUS': {
+      const sched = booking.busBooking?.schedule;
+      return {
+        operator: sched?.bus?.operator?.name || 'Bus',
+        from: sched?.route?.source || '—',
+        to: sched?.route?.destination || '—',
+        time: sched?.departureTime || '',
+        seats: booking.passengers?.map(p => p.seatNumber).filter(Boolean).join(', ') || '—',
+        ticketScreen: 'ticket',
+        trackScreen: 'live-tracking',
+      };
+    }
+    case 'TRAIN': {
+      const sched = booking.trainBooking?.schedule;
+      return {
+        operator: `${sched?.train?.trainNumber || ''} ${sched?.train?.trainName || 'Train'}`.trim(),
+        from: sched?.route?.source || '—',
+        to: sched?.route?.destination || '—',
+        time: sched?.departureTime || '',
+        seats: booking.trainBooking?.classCode || '—',
+        ticketScreen: 'train-ticket',
+        trackScreen: 'train-live-status',
+      };
+    }
+    case 'FLIGHT': {
+      const sched = booking.flightBooking?.schedule;
+      return {
+        operator: `${sched?.flight?.airline?.name || 'Flight'} (${sched?.flight?.flightNumber || ''})`,
+        from: sched?.sourceAirport?.city || '—',
+        to: sched?.destinationAirport?.city || '—',
+        time: sched?.departureTime || '',
+        seats: '—',
+        ticketScreen: 'flight-ticket',
+        trackScreen: null,
+      };
+    }
+    case 'HOTEL': {
+      const hb = booking.hotelBooking;
+      return {
+        operator: hb?.hotel?.name || 'Hotel',
+        from: hb?.hotel?.city || '—',
+        to: `${hb?.numberOfRooms || 1} Room(s)`,
+        time: '',
+        seats: hb?.room?.roomType || '—',
+        ticketScreen: 'hotel-ticket',
+        trackScreen: null,
+      };
+    }
+    default:
+      return { operator: '—', from: '—', to: '—', time: '', seats: '—', ticketScreen: null, trackScreen: null };
+  }
+}
 
-  const filteredTrips = (allTrips[statusTab] || []).filter((t) => {
-    if (catFilter === "all") return true;
-    return t.category === catFilter;
-  });
+export default function MyTripsScreen({ onNavigate, booking, setBooking }) {
+  const [activeTab, setActiveTab] = useState('upcoming');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchBookings = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      const res = await bookingService.getMyBookings({ limit: 50 });
+      setBookings(res?.data?.bookings || []);
+    } catch {
+      setBookings([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchBookings(); }, [fetchBookings]);
+
+  const now = new Date();
+  const upcomingStatuses = ['CONFIRMED', 'PENDING'];
+  const upcoming = bookings.filter(b => upcomingStatuses.includes(b.status) && new Date(b.travelDate) >= now);
+  const past = bookings.filter(b => b.status === 'COMPLETED' || b.status === 'CANCELLED' || new Date(b.travelDate) < now);
+
+  const displayed = activeTab === 'upcoming' ? upcoming : past;
+
+  const handleCancelTrip = (bookingId) => {
+    Alert.alert('Cancel Booking', 'Do you want to request cancellation for this booking?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, Cancel',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await bookingService.requestCancellation({ bookingId, reason: 'User requested cancellation' });
+            Alert.alert('Success', 'Cancellation request submitted');
+            fetchBookings(true);
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Could not cancel booking');
+          }
+        },
+      },
+    ]);
+  };
+
+  const tabs = [
+    { id: 'upcoming', label: 'Upcoming', count: upcoming.length },
+    { id: 'past', label: 'Past Trips', count: past.length },
+  ];
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            onPress={() => onNavigate("home")}
-            style={styles.backBtn}
-            activeOpacity={0.7}
-          >
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn} activeOpacity={0.7}>
             <ArrowLeft size={18} color="#FFFFFF" />
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>My Trips</Text>
-            <Text style={styles.headerSub}>Manage your Bus, Train, Flight & Hotel journeys</Text>
+            <Text style={styles.headerSub}>{bookings.length} booking(s) found</Text>
           </View>
         </View>
-
-        {/* Status Switcher (Upcoming | Completed | Cancelled) */}
-        <View style={styles.tabSwitchContainer}>
-          {["upcoming", "completed", "cancelled"].map((t) => (
+        {/* Tabs */}
+        <View style={styles.tabRow}>
+          {tabs.map(t => (
             <TouchableOpacity
-              key={t}
-              onPress={() => setStatusTab(t)}
-              style={[
-                styles.tabSwitchBtn,
-                { backgroundColor: statusTab === t ? "#FFFFFF" : "transparent" },
-              ]}
-              activeOpacity={0.7}
+              key={t.id}
+              style={[styles.tab, activeTab === t.id && styles.tabActive]}
+              onPress={() => setActiveTab(t.id)}
+              activeOpacity={0.8}
             >
-              <Text
-                style={[
-                  styles.tabSwitchText,
-                  { color: statusTab === t ? "#D13239" : "rgba(255,255,255,0.85)" },
-                ]}
-              >
-                {t}
+              <Text style={[styles.tabText, activeTab === t.id && styles.tabTextActive]}>
+                {t.label} {t.count > 0 && `(${t.count})`}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Category Filter Chips */}
-      <View style={styles.catFilterBar}>
-        {["all", "bus", "train", "flight", "hotel"].map((c) => {
-          const active = catFilter === c;
-          return (
-            <TouchableOpacity
-              key={c}
-              onPress={() => setCatFilter(c)}
-              style={[styles.catFilterChip, active && styles.catFilterChipActive]}
-            >
-              <Text style={[styles.catFilterText, active && styles.catFilterTextActive]}>
-                {c === "all" ? "All Journeys" : c.toUpperCase()}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+      {loading ? (
+        <View style={styles.centered}><ActivityIndicator size="large" color="#D13239" /></View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchBookings(true)} tintColor="#D13239" />}
+        >
+          {displayed.length === 0 ? (
+            <EmptyState
+              title={activeTab === 'upcoming' ? 'No upcoming trips' : 'No past trips'}
+              subtitle={activeTab === 'upcoming' ? 'Start booking your next journey!' : 'Your completed and cancelled trips will appear here'}
+            />
+          ) : (
+            displayed.map((b) => {
+              const info = getBookingInfo(b);
+              const CatIcon = CATEGORY_ICON[b.bookingType] || Bus;
+              const statusCfg = STATUS_CONFIG[b.status] || STATUS_CONFIG.PENDING;
+              const { Icon: StatusIcon } = statusCfg;
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {filteredTrips.length === 0 ? (
-          <EmptyState
-            type="no-trips"
-            title={`No ${statusTab.toLowerCase()} ${catFilter === "all" ? "trips" : catFilter + " trips"}`}
-            subtitle="You don't have any journeys in this category yet. Book a new trip anytime!"
-            onAction={() => onNavigate("home")}
-            actionLabel="Book a Journey"
-          />
-        ) : (
-          filteredTrips.map((trip) => {
-            const catInfo = categoryIcons[trip.category] || categoryIcons.bus;
-            const CatIcon = catInfo.Icon;
-            const cfg = tabCfg[statusTab];
-
-            return (
-              <View key={trip.pnr} style={styles.tripCard}>
-                <View style={[styles.cardTopStrip, { backgroundColor: catInfo.color }]} />
-                <View style={styles.cardPad}>
-                  {/* Header Row */}
-                  <View style={styles.cardHeaderRow}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                      <View style={[styles.catIconCircle, { backgroundColor: catInfo.bg }]}>
-                        <CatIcon size={14} color={catInfo.color} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.operatorName} numberOfLines={1}>
-                          {trip.operator}
-                        </Text>
-                        <Text style={styles.dateSub}>
-                          {trip.date} · {trip.time}
-                        </Text>
-                      </View>
+              return (
+                <View key={b.id} style={styles.card}>
+                  {/* Card Top */}
+                  <View style={styles.cardTop}>
+                    <View style={styles.catBadge}>
+                      <CatIcon size={12} color="#D13239" />
+                      <Text style={styles.catText}>{b.bookingType}</Text>
                     </View>
-                    <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
-                      <cfg.Icon size={11} color={cfg.color} />
-                      <Text style={[styles.statusBadgeText, { color: cfg.color }]}>
-                        {cfg.label}
-                      </Text>
+                    <View style={[styles.statusBadge, { backgroundColor: statusCfg.bg }]}>
+                      <StatusIcon size={11} color={statusCfg.color} />
+                      <Text style={[styles.statusText, { color: statusCfg.color }]}>{b.status}</Text>
                     </View>
                   </View>
 
-                  {/* Route Box */}
-                  <View style={styles.routeBox}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cityText} numberOfLines={1}>
-                        {trip.from}
-                      </Text>
-                      <Text style={styles.routeLabelText}>Origin</Text>
-                    </View>
-                    <View style={styles.busLineContainer}>
-                      <View style={styles.dashLine} />
-                      <CatIcon size={14} color={catInfo.color} />
-                      <View style={styles.dashLine} />
-                    </View>
-                    <View style={{ flex: 1, alignItems: "flex-end" }}>
-                      <Text style={styles.cityText} numberOfLines={1}>
-                        {trip.to}
-                      </Text>
-                      <Text style={styles.routeLabelText}>Destination</Text>
-                    </View>
+                  {/* Operator */}
+                  <Text style={styles.operatorText} numberOfLines={1}>{info.operator}</Text>
+
+                  {/* Route */}
+                  <View style={styles.routeRow}>
+                    <Text style={styles.city}>{info.from}</Text>
+                    <View style={styles.routeArrow}><MapPin size={14} color="#D13239" /></View>
+                    <Text style={styles.city}>{info.to}</Text>
                   </View>
 
-                  {/* Ref & Seats */}
-                  <View style={styles.pnrSeatRow}>
-                    <View>
-                      <Text style={styles.pnrText}>
-                        Ref/PNR: <Text style={styles.pnrBold}>{trip.pnr}</Text>
-                      </Text>
-                      <Text style={styles.seatsText}>Allocated: {trip.seats}</Text>
-                    </View>
-                    <View style={{ alignItems: "flex-end" }}>
-                      <Text style={styles.paidLabel}>Paid Amount</Text>
-                      <Text style={styles.paidVal}>₹{trip.price.toLocaleString()}</Text>
-                    </View>
+                  {/* Details */}
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailText}>{formatDate(b.travelDate)}{info.time ? ` • ${info.time}` : ''}</Text>
+                    <Text style={styles.detailText}>₹{b.totalAmount?.toLocaleString('en-IN')}</Text>
+                  </View>
+
+                  <View style={styles.pnrRow}>
+                    <Ticket size={12} color="#9CA3AF" />
+                    <Text style={styles.pnrText}>Ref: {b.bookingReference}</Text>
                   </View>
 
                   {/* Actions */}
                   <View style={styles.actionsRow}>
-                    <TouchableOpacity
-                      onPress={() => onNavigate(trip.ticketScreen || "ticket")}
-                      style={[styles.outlineBtn, { borderColor: catInfo.color }]}
-                      activeOpacity={0.7}
-                    >
-                      <Ticket size={13} color={catInfo.color} />
-                      <Text style={[styles.outlineBtnText, { color: catInfo.color }]}>
-                        View Ticket
-                      </Text>
-                    </TouchableOpacity>
-
-                    {statusTab === "upcoming" && trip.trackScreen && (
+                    {info.ticketScreen && (
                       <TouchableOpacity
-                        onPress={() => onNavigate(trip.trackScreen)}
-                        style={[styles.trackBtn, { backgroundColor: catInfo.color }]}
-                        activeOpacity={0.8}
+                        style={styles.actionBtn}
+                        onPress={() => {
+                          setBooking({ ...b });
+                          onNavigate(info.ticketScreen);
+                        }}
                       >
-                        <Navigation size={13} color="#FFFFFF" />
-                        <Text style={styles.trackBtnText}>Live Tracker</Text>
+                        <Ticket size={14} color="#D13239" />
+                        <Text style={styles.actionText}>View Ticket</Text>
                       </TouchableOpacity>
                     )}
-
-                    {statusTab === "upcoming" && (
+                    {info.trackScreen && b.status === 'CONFIRMED' && (
                       <TouchableOpacity
-                        onPress={() => onNavigate("cancel-ticket")}
-                        style={styles.cancelIconBtn}
-                        activeOpacity={0.7}
+                        style={styles.actionBtn}
+                        onPress={() => onNavigate(info.trackScreen)}
                       >
-                        <X size={14} color="#D13239" />
+                        <Navigation size={14} color="#2563EB" />
+                        <Text style={[styles.actionText, { color: '#2563EB' }]}>Track</Text>
                       </TouchableOpacity>
                     )}
-
-                    {statusTab === "cancelled" && (
+                    {b.status === 'CONFIRMED' && (
                       <TouchableOpacity
-                        onPress={() => onNavigate("refund-status")}
-                        style={styles.refundBtn}
-                        activeOpacity={0.8}
+                        style={[styles.actionBtn, styles.cancelBtn]}
+                        onPress={() => handleCancelTrip(b.id)}
                       >
-                        <ChevronRight size={13} color="#FFFFFF" />
-                        <Text style={styles.refundBtnText}>Refund Status</Text>
+                        <XCircle size={14} color="#EF4444" />
+                        <Text style={[styles.actionText, { color: '#EF4444' }]}>Cancel</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                 </View>
-              </View>
-            );
-          })
-        )}
-      </ScrollView>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
 
-      <BottomNav current="my-trips" onNavigate={onNavigate} />
+      <BottomNav active="trips" onNavigate={onNavigate} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 14,
-    backgroundColor: "#D13239",
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    marginBottom: 12,
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  header: { backgroundColor: '#D13239', paddingHorizontal: 16, paddingTop: 20, paddingBottom: 0 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 16 },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
+  headerTitle: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
+  tabRow: { flexDirection: 'row' },
+  tab: {
+    flex: 1, paddingVertical: 12, alignItems: 'center',
+    borderBottomWidth: 3, borderBottomColor: 'transparent',
   },
-  headerSub: {
-    fontSize: 12,
-    color: "rgba(255, 255, 255, 0.75)",
-    marginTop: 1,
-  },
-  tabSwitchContainer: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
-    borderRadius: 14,
-    padding: 3,
-    gap: 4,
-  },
-  tabSwitchBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 11,
-    alignItems: "center",
-  },
-  tabSwitchText: {
-    fontSize: 12,
-    fontWeight: "800",
-    textTransform: "capitalize",
-  },
-  catFilterBar: {
-    flexDirection: "row",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 6,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  catFilterChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F1F5F9",
-  },
-  catFilterChipActive: {
-    backgroundColor: "#0F172A",
-  },
-  catFilterText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#64748B",
-  },
-  catFilterTextActive: {
-    color: "#FFFFFF",
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 14,
-    paddingBottom: 100,
-  },
-  tripCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    overflow: "hidden",
-    elevation: 3,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  cardTopStrip: {
-    height: 4,
-    width: "100%",
-  },
-  cardPad: {
-    padding: 16,
-    gap: 10,
-  },
-  cardHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  catIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  operatorName: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
-  dateSub: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 1,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  routeBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  cityText: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-  routeLabelText: {
-    fontSize: 9,
-    color: "#94A3B8",
-  },
-  busLineContainer: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 6,
-  },
-  dashLine: {
-    flex: 1,
-    height: 1,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-    borderStyle: "dashed",
-  },
-  pnrSeatRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  pnrText: {
-    fontSize: 12,
-    color: "#64748B",
-  },
-  pnrBold: {
-    fontWeight: "800",
-    color: "#0F172A",
-  },
-  seatsText: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 2,
-  },
-  paidLabel: {
-    fontSize: 10,
-    color: "#94A3B8",
-  },
-  paidVal: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-  actionsRow: {
-    flexDirection: "row",
+  tabActive: { borderBottomColor: '#FFFFFF' },
+  tabText: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.6)' },
+  tabTextActive: { color: '#FFFFFF', fontWeight: '800' },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scrollContent: { padding: 16, gap: 14, paddingBottom: 90 },
+  card: {
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
     gap: 8,
   },
-  outlineBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  catBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#FFF0F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
   },
-  outlineBtnText: {
-    fontSize: 12,
-    fontWeight: "800",
+  catText: { fontSize: 10, fontWeight: '700', color: '#D13239' },
+  statusBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
   },
-  trackBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
+  statusText: { fontSize: 10, fontWeight: '700' },
+  operatorText: { fontSize: 14, fontWeight: '800', color: '#111827' },
+  routeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  city: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  routeArrow: { flex: 1, alignItems: 'center' },
+  detailsRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  detailText: { fontSize: 12, color: '#6B7280' },
+  pnrRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pnrText: { fontSize: 11, color: '#9CA3AF' },
+  actionsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  actionBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 8, paddingHorizontal: 12,
+    backgroundColor: '#FFF0F0', borderRadius: 10,
   },
-  trackBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  cancelIconBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: "#FFF0F0",
-    borderWidth: 1,
-    borderColor: "#FFE0E0",
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  refundBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#059669",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-  },
-  refundBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
+  cancelBtn: { backgroundColor: '#FFF5F5' },
+  actionText: { fontSize: 12, fontWeight: '600', color: '#D13239' },
 });

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { ArrowLeft, Share2, MapPin, Clock, AlertTriangle, Phone, X } from 'lucide-react-native';
+import bookingService from '../services/bookingService';
+import busService from '../services/busService';
 
-const stops = [
+const defaultStops = [
   { name: 'Dadar West', time: '08:00 PM', done: true },
   { name: 'Kalyan', time: '09:05 PM', done: true },
   { name: 'Lonavala', time: '10:00 PM', done: false, current: true },
@@ -11,6 +13,9 @@ const stops = [
 
 export default function LiveTrackingScreen({ onNavigate, booking }) {
   const [progress, setProgress] = useState(60);
+  const [delayInfo, setDelayInfo] = useState({ title: 'On Time', sub: 'Bus is running on scheduled time', isDelayed: false });
+  const [eta, setEta] = useState(booking.selectedBus?.arrival || '11:00 PM');
+  const [stops, setStops] = useState(defaultStops);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -18,6 +23,32 @@ export default function LiveTrackingScreen({ onNavigate, booking }) {
     }, 200);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    const bId = booking.backendBookingId || booking.id;
+    if (bId) {
+      bookingService.getBookingTracking(bId)
+        .then(res => {
+          const trk = res?.data?.tracking;
+          if (trk?.eta) setEta(trk.eta);
+          if (trk?.status) {
+            setDelayInfo({
+              title: trk.status === 'DELAYED' ? 'Bus Delayed' : 'On Time',
+              sub: trk.delayMinutes ? `Delayed by ${trk.delayMinutes} mins` : 'Running on schedule',
+              isDelayed: trk.status === 'DELAYED',
+            });
+          }
+        })
+        .catch(() => {});
+    } else if (booking.selectedBus?.id) {
+      busService.getLiveTracking(booking.selectedBus.id)
+        .then(res => {
+          const trk = res?.data?.tracking;
+          if (trk?.eta) setEta(trk.eta);
+        })
+        .catch(() => {});
+    }
+  }, [booking]);
 
   return (
     <View style={styles.container}>
@@ -29,10 +60,10 @@ export default function LiveTrackingScreen({ onNavigate, booking }) {
           </TouchableOpacity>
           <View>
             <Text style={styles.headerTitle}>Live Tracking</Text>
-            <Text style={styles.headerSub}>PNR: {booking.pnr || 'SB12345678'}</Text>
+            <Text style={styles.headerSub}>PNR: {booking.pnr || booking.bookingReference || 'SB12345678'}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => onNavigate('trip-sharing')} style={styles.backBtn} activeOpacity={0.7}>
           <Share2 size={16} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
@@ -54,13 +85,13 @@ export default function LiveTrackingScreen({ onNavigate, booking }) {
         </View>
 
         {/* Delay Alert */}
-        <View style={styles.delayCard}>
-          <View style={styles.delayIconBox}>
-            <AlertTriangle size={16} color="#D97706" />
+        <View style={[styles.delayCard, !delayInfo.isDelayed && { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+          <View style={[styles.delayIconBox, !delayInfo.isDelayed && { backgroundColor: '#D1FAE5' }]}>
+            <AlertTriangle size={16} color={delayInfo.isDelayed ? '#D97706' : '#059669'} />
           </View>
           <View>
-            <Text style={styles.delayTitle}>Slight Delay</Text>
-            <Text style={styles.delaySub}>Bus may be delayed by 10 mins</Text>
+            <Text style={[styles.delayTitle, !delayInfo.isDelayed && { color: '#065F46' }]}>{delayInfo.title}</Text>
+            <Text style={[styles.delaySub, !delayInfo.isDelayed && { color: '#047857' }]}>{delayInfo.sub}</Text>
           </View>
         </View>
 
@@ -70,7 +101,7 @@ export default function LiveTrackingScreen({ onNavigate, booking }) {
             <Text style={styles.cardTitle}>Route Progress</Text>
             <View style={styles.etaBadge}>
               <Clock size={13} color="#9CA3AF" />
-              <Text style={styles.etaText}>ETA: 11:00 PM</Text>
+              <Text style={styles.etaText}>ETA: {eta}</Text>
             </View>
           </View>
 
