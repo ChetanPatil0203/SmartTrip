@@ -2,6 +2,11 @@ const crypto = require("crypto");
 const cancellationModel = require("../models/cancellationModel");
 const { calculateRefundAmount } = require("../constants/cancellationPolicy");
 const { prisma } = require("../config/db");
+const {
+  createCancellationNotification,
+  createRefundInitiatedNotification,
+  createRefundCompletedNotification,
+} = require("./notificationService");
 
 const generateRefundReference = () => {
   const randomStr = crypto.randomBytes(5).toString("hex").toUpperCase();
@@ -113,6 +118,12 @@ const cancellationService = {
 
       return { booking: updatedBooking, cancellation, refund };
     });
+
+    // Fire cancellation notification (non-blocking)
+    createCancellationNotification(booking.userId, booking).catch(() => {});
+    if (successPayment && result.refund) {
+      createRefundInitiatedNotification(booking.userId, booking, finalRefundAmount).catch(() => {});
+    }
 
     return {
       bookingId: booking.id,
@@ -338,6 +349,9 @@ const cancellationService = {
 
       return updated;
     });
+
+    // Fire refund completed notification (non-blocking)
+    createRefundCompletedNotification(refund.booking.userId, refund.booking, updatedRefund.amount).catch(() => {});
 
     return {
       refund: {

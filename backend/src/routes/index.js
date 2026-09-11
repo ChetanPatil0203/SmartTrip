@@ -8,6 +8,9 @@ const hotelRoutes = require("./hotelRoutes");
 const bookingRoutes = require("./bookingRoutes");
 const paymentRoutes = require("./paymentRoutes");
 const cancellationRoutes = require("./cancellationRoutes");
+const notificationRoutes = require("./notificationRoutes");
+const offerRoutes = require("./offerRoutes");
+const couponRoutes = require("./couponRoutes");
 const { prisma } = require("../config/db");
 
 const router = express.Router();
@@ -39,5 +42,8 @@ router.use("/hotels", hotelRoutes);
 router.use("/bookings", bookingRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/cancellations", cancellationRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/offers", offerRoutes);
+router.use("/coupons", couponRoutes);
 
 module.exports = router;

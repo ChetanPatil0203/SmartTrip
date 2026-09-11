@@ -1,5 +1,10 @@
 const paymentModel = require("../models/paymentModel");
 const { getPaymentProvider } = require("./paymentProviders/paymentProvider");
+const {
+  createBookingNotification,
+  createPaymentSuccessNotification,
+  createPaymentFailedNotification,
+} = require("./notificationService");
 
 const paymentService = {
   createOrder: async (userId, body) => {
@@ -147,6 +152,9 @@ const paymentService = {
         bookingStatus: booking.status,
       });
 
+      // Fire payment failed notification (non-blocking)
+      createPaymentFailedNotification(booking.userId, booking).catch(() => {});
+
       const error = new Error(verification.error || "Payment verification failed");
       error.statusCode = 422;
       error.errorCode = "PAYMENT_VERIFICATION_FAILED";
@@ -162,6 +170,10 @@ const paymentService = {
       paidAt: new Date(),
       method: method ? method.trim().toUpperCase() : paymentRecord.method,
     });
+
+    // Fire payment success + booking confirmed notifications (non-blocking)
+    createPaymentSuccessNotification(booking.userId, updatedResult.booking, updatedResult.payment.amount).catch(() => {});
+    createBookingNotification(booking.userId, updatedResult.booking).catch(() => {});
 
     return {
       message: "Payment verified and booking confirmed successfully",
