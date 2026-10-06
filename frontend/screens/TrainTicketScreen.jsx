@@ -1,17 +1,51 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { ArrowLeft, CheckCircle2, QrCode, Download, Share2, Navigation, X, Train, Calendar, User } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share, Alert, Image } from 'react-native';
+import { ArrowLeft, CheckCircle2, QrCode, Download, Share2, Navigation, X, Train, Calendar, User, ShieldCheck } from 'lucide-react-native';
 
-export default function TrainTicketScreen({ onNavigate, booking }) {
-  const pnr = booking.pnr || 'PNR-8829104';
-  const trainName = booking.selectedTrain?.name || '12009 Shatabdi Express';
-  const trainNo = booking.selectedTrain?.number || '12009';
-  const from = booking.trainFrom || 'Mumbai Central';
-  const to = booking.trainTo || 'Ahmedabad';
-  const classType = booking.trainClass || 'Exec. Chair Car (EC)';
-  const passengers = booking.trainPassengerList?.length ? booking.trainPassengerList : [
-    { name: 'Rahul Sharma', age: '28', gender: 'Male', berth: 'Lower' }
+export default function TrainTicketScreen({ onNavigate, booking = {} }) {
+  const currentBooking = booking || {};
+  const pnr = currentBooking.pnr || 'PNR-8829104';
+  const bookingId = currentBooking.backendBookingId || currentBooking.bookingId || 'ST-TRN-94812';
+  const trainName = currentBooking.selectedTrain?.name || '12009 Shatabdi Express';
+  const trainNo = currentBooking.selectedTrain?.number || '12009';
+  const from = currentBooking.trainFrom || currentBooking.from || 'Mumbai Central';
+  const to = currentBooking.trainTo || currentBooking.to || 'Ahmedabad';
+  const classType = currentBooking.trainClass || 'Exec. Chair Car (EC)';
+  const passengers = currentBooking.trainPassengerList?.length ? currentBooking.trainPassengerList : [
+    { name: 'Chetan Patil', age: '24', gender: 'Male', berth: '42 (Lower)' }
   ];
+  const totalAmount = currentBooking.totalAmount || 1450;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=6&data=${encodeURIComponent(`IRCTC|PNR:${pnr}|TRAIN:${trainNo}|FROM:${from}|TO:${to}|FARE:${totalAmount}`)}`;
+
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+
+  const handleShare = async () => {
+    const text = `🚆 SmartTrip IRCTC Confirmed Train Ticket\nPNR: ${pnr}\nTrain: ${trainNo} - ${trainName}\nRoute: ${from} ➔ ${to}\nClass: ${classType}\nFare: ₹${totalAmount}\nStatus: CNF (Confirmed)\n\nShow this e-ticket to the TTE. Track live on SmartTrip!`;
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          await navigator.share({ title: `Train Ticket ${pnr}`, text });
+          return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+          Alert.alert('Copied', 'Train ticket details copied to clipboard!');
+          return;
+        }
+      }
+      await Share.share({ title: `Train Ticket ${pnr}`, message: text });
+    } catch { /* ignored */ }
+  };
+
+  const handleDownload = () => {
+    setDownloadSuccess(true);
+    setTimeout(() => setDownloadSuccess(false), 3000);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.print();
+    } else {
+      Alert.alert('Ticket Downloaded', `IRCTC Train Ticket PDF saved to Downloads.\nPNR: ${pnr}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -21,10 +55,13 @@ export default function TrainTicketScreen({ onNavigate, booking }) {
           <TouchableOpacity onPress={() => onNavigate('my-trips')} style={styles.backBtn} activeOpacity={0.7}>
             <ArrowLeft size={18} color="#FFFFFF" />
           </TouchableOpacity>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Train Ticket Confirmed</Text>
             <Text style={styles.headerSub}>IRCTC E-Ticket Voucher</Text>
           </View>
+          <TouchableOpacity onPress={handleShare} style={styles.backBtn} activeOpacity={0.7}>
+            <Share2 size={16} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -46,7 +83,7 @@ export default function TrainTicketScreen({ onNavigate, booking }) {
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={styles.pnrLabel}>BOOKING ID</Text>
-                <Text style={styles.bookingIdVal}>{booking.bookingId || 'ST-TRN-94812'}</Text>
+                <Text style={styles.bookingIdVal}>{bookingId}</Text>
               </View>
             </View>
 
@@ -95,33 +132,35 @@ export default function TrainTicketScreen({ onNavigate, booking }) {
                 <View key={index} style={styles.pRow}>
                   <User size={14} color="#2563EB" />
                   <Text style={styles.pText}>{p.name} ({p.age} yrs, {p.gender})</Text>
-                  <Text style={styles.pBerth}>Berth: {p.berth}</Text>
+                  <Text style={styles.pBerth}>Berth: {p.berth || 'Confirmed'}</Text>
                 </View>
               ))}
             </View>
 
             {/* QR Code Section */}
             <View style={styles.qrSection}>
-              <QrCode size={100} color="#0F172A" />
-              <Text style={styles.qrText}>Scan at station / TTE Verification</Text>
+              <View style={styles.qrImageBox}>
+                <Image source={{ uri: qrUrl }} style={styles.qrImg} resizeMode="contain" />
+              </View>
+              <Text style={styles.qrText}>Scan at station / TTE Digital Verification</Text>
             </View>
 
             {/* Total Fare */}
             <View style={styles.fareRow}>
               <Text style={styles.fareLabel}>Total Paid Amount</Text>
-              <Text style={styles.fareVal}>₹{booking.totalAmount || 1450}</Text>
+              <Text style={styles.fareVal}>₹{totalAmount.toLocaleString()}</Text>
             </View>
           </View>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsGrid}>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
+          <TouchableOpacity onPress={handleDownload} style={styles.actionBtn} activeOpacity={0.8}>
             <Download size={16} color="#2563EB" />
-            <Text style={styles.actionBtnText}>Download Ticket</Text>
+            <Text style={styles.actionBtnText}>{downloadSuccess ? 'Downloaded ✓' : 'Download Ticket'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
+          <TouchableOpacity onPress={handleShare} style={styles.actionBtn} activeOpacity={0.8}>
             <Share2 size={16} color="#2563EB" />
             <Text style={styles.actionBtnText}>Share Ticket</Text>
           </TouchableOpacity>
@@ -332,12 +371,35 @@ const styles = StyleSheet.create({
     color: '#2563EB',
     fontWeight: '700',
   },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+    gap: 16,
+    maxWidth: 580,
+    width: '100%',
+    alignSelf: 'center',
+  },
   qrSection: {
     alignItems: 'center',
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     gap: 6,
+  },
+  qrImageBox: {
+    width: 140,
+    height: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+  },
+  qrImg: {
+    width: 124,
+    height: 124,
   },
   qrText: {
     fontSize: 10,

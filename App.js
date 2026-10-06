@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, SafeAreaView, StatusBar } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initBooking } from './frontend/constants/booking';
+import { BookingProvider } from './frontend/context/BookingContext';
 
 import SplashScreen from './frontend/screens/SplashScreen';
 import OnboardingScreen from './frontend/screens/OnboardingScreen';
@@ -41,6 +43,10 @@ import HotelDetailsScreen from './frontend/screens/HotelDetailsScreen';
 import HotelGuestDetailsScreen from './frontend/screens/HotelGuestDetailsScreen';
 import HotelTicketScreen from './frontend/screens/HotelTicketScreen';
 
+// Cab & Auto screens
+import CabSearchResultsScreen from './frontend/screens/CabSearchResultsScreen';
+import CabTrackingScreen from './frontend/screens/CabTrackingScreen';
+
 // Universal & App screens
 import PaymentScreen from './frontend/screens/PaymentScreen';
 import BookingConfirmationScreen from './frontend/screens/BookingConfirmationScreen';
@@ -62,86 +68,140 @@ import NotificationsScreen from './frontend/screens/NotificationsScreen';
 import SettingsScreen from './frontend/screens/SettingsScreen';
 import SideMenuScreen from './frontend/screens/SideMenuScreen';
 
+import { useEffect, useCallback } from 'react';
+import { BackHandler, Alert } from 'react-native';
+
 export default function App() {
-  const [screen, setScreen] = useState('splash');
+  const [history, setHistory] = useState(['splash']);
   const [booking, setBookingState] = useState(initBooking);
 
-  const setBooking = (partial) => {
+  const screen = history[history.length - 1] || 'home';
+
+  const setBooking = useCallback((partial) => {
     setBookingState(prev => ({ ...prev, ...partial }));
-  };
+  }, []);
 
-  const nav = (s) => setScreen(s);
+  const nav = useCallback((nextScreen, options = {}) => {
+    setHistory(prev => {
+      if (options.reset || nextScreen === 'home' || nextScreen === 'login') {
+        return [nextScreen];
+      }
+      if (prev[prev.length - 1] === nextScreen) {
+        return prev;
+      }
+      return [...prev, nextScreen];
+    });
+  }, []);
 
-  const props = { onNavigate: nav, booking, setBooking };
+  const goBack = useCallback(() => {
+    setHistory(prev => {
+      if (prev.length > 1) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
+  }, []);
+
+  // Native Android Hardware Back Button listener
+  useEffect(() => {
+    const onBackPress = () => {
+      if (history.length > 1 && screen !== 'home' && screen !== 'splash') {
+        goBack();
+        return true; // prevent app exit
+      }
+      if (screen === 'home') {
+        Alert.alert('Exit SmartTrip', 'Are you sure you want to close the app?', [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Exit', onPress: () => BackHandler.exitApp() },
+        ]);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => subscription.remove();
+  }, [history.length, screen, goBack]);
+
+  const props = { onNavigate: nav, goBack, booking, setBooking };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-      <View style={styles.screenContainer}>
-        {/* Auth & Splash */}
-        {screen === 'splash' && <SplashScreen onNavigate={nav} />}
-        {screen === 'onboarding' && <OnboardingScreen onNavigate={nav} />}
-        {screen === 'login' && <LoginScreen onNavigate={nav} />}
-        {screen === 'register' && <RegisterScreen onNavigate={nav} />}
-        {screen === 'otp' && <OTPScreen onNavigate={nav} />}
+    <SafeAreaProvider>
+      <BookingProvider initialBooking={booking}>
+        <SafeAreaView style={styles.container}>
+          <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+          <View style={styles.screenContainer}>
+            {/* Auth & Splash */}
+            {screen === 'splash' && <SplashScreen onNavigate={nav} />}
+            {screen === 'onboarding' && <OnboardingScreen onNavigate={nav} />}
+            {screen === 'login' && <LoginScreen onNavigate={nav} />}
+            {screen === 'register' && <RegisterScreen onNavigate={nav} />}
+            {screen === 'otp' && <OTPScreen onNavigate={nav} />}
 
-        {/* Dashboard */}
-        {screen === 'home' && <HomeScreen {...props} />}
+            {/* Dashboard */}
+            {screen === 'home' && <HomeScreen {...props} />}
 
-        {/* Bus Flow (Preserved 100%) */}
-        {screen === 'search-results' && <SearchResultsScreen {...props} />}
-        {screen === 'filter' && <FilterScreen onNavigate={nav} />}
-        {screen === 'bus-details' && <BusDetailsScreen onNavigate={nav} booking={booking} />}
-        {screen === 'seat-selection' && <SeatSelectionScreen {...props} />}
-        {screen === 'boarding-dropping' && <BoardingDroppingScreen {...props} />}
-        {screen === 'passenger-details' && <PassengerDetailsScreen {...props} />}
-        {screen === 'booking-confirmation' && <BookingConfirmationScreen onNavigate={nav} booking={booking} />}
-        {screen === 'ticket' && <TicketScreen onNavigate={nav} booking={booking} />}
-        {screen === 'live-tracking' && <LiveTrackingScreen onNavigate={nav} booking={booking} />}
-        {screen === 'delay-alert' && <DelayAlertScreen onNavigate={nav} booking={booking} />}
-        {screen === 'alternative-bus' && <AlternativeBusScreen onNavigate={nav} booking={booking} setBooking={setBooking} />}
-        {screen === 'missed-bus' && <MissedBusScreen onNavigate={nav} booking={booking} />}
+            {/* Bus Flow (Preserved 100%) */}
+            {screen === 'search-results' && <SearchResultsScreen {...props} />}
+            {screen === 'filter' && <FilterScreen onNavigate={nav} />}
+            {screen === 'bus-details' && <BusDetailsScreen onNavigate={nav} booking={booking} />}
+            {screen === 'seat-selection' && <SeatSelectionScreen {...props} />}
+            {screen === 'boarding-dropping' && <BoardingDroppingScreen {...props} />}
+            {screen === 'passenger-details' && <PassengerDetailsScreen {...props} />}
+            {screen === 'booking-confirmation' && <BookingConfirmationScreen onNavigate={nav} booking={booking} />}
+            {screen === 'ticket' && <TicketScreen onNavigate={nav} booking={booking} />}
+            {screen === 'live-tracking' && <LiveTrackingScreen onNavigate={nav} booking={booking} />}
+            {screen === 'delay-alert' && <DelayAlertScreen onNavigate={nav} booking={booking} />}
+            {screen === 'alternative-bus' && <AlternativeBusScreen onNavigate={nav} booking={booking} setBooking={setBooking} />}
+            {screen === 'missed-bus' && <MissedBusScreen onNavigate={nav} booking={booking} />}
 
-        {/* Train Flow */}
-        {screen === 'train-search-results' && <TrainSearchResultsScreen {...props} />}
-        {screen === 'train-details' && <TrainDetailsScreen {...props} />}
-        {screen === 'train-seat-selection' && <TrainSeatSelectionScreen {...props} />}
-        {screen === 'train-passenger-details' && <TrainPassengerDetailsScreen {...props} />}
-        {screen === 'train-live-status' && <TrainLiveStatusScreen {...props} />}
-        {screen === 'train-ticket' && <TrainTicketScreen {...props} />}
+            {/* Train Flow */}
+            {screen === 'train-search-results' && <TrainSearchResultsScreen {...props} />}
+            {screen === 'train-details' && <TrainDetailsScreen {...props} />}
+            {screen === 'train-seat-selection' && <TrainSeatSelectionScreen {...props} />}
+            {screen === 'train-passenger-details' && <TrainPassengerDetailsScreen {...props} />}
+            {screen === 'train-live-status' && <TrainLiveStatusScreen {...props} />}
+            {screen === 'train-ticket' && <TrainTicketScreen {...props} />}
 
-        {/* Flight Flow */}
-        {screen === 'flight-search-results' && <FlightSearchResultsScreen {...props} />}
-        {screen === 'flight-filter' && <FlightFilterScreen {...props} />}
-        {screen === 'flight-details' && <FlightDetailsScreen {...props} />}
-        {screen === 'flight-seat-selection' && <FlightSeatSelectionScreen {...props} />}
-        {screen === 'flight-addons' && <FlightAddonsScreen {...props} />}
-        {screen === 'flight-passenger-details' && <FlightPassengerDetailsScreen {...props} />}
-        {screen === 'flight-ticket' && <FlightTicketScreen {...props} />}
+            {/* Flight Flow */}
+            {screen === 'flight-search-results' && <FlightSearchResultsScreen {...props} />}
+            {screen === 'flight-filter' && <FlightFilterScreen {...props} />}
+            {screen === 'flight-details' && <FlightDetailsScreen {...props} />}
+            {screen === 'flight-seat-selection' && <FlightSeatSelectionScreen {...props} />}
+            {screen === 'flight-addons' && <FlightAddonsScreen {...props} />}
+            {screen === 'flight-passenger-details' && <FlightPassengerDetailsScreen {...props} />}
+            {screen === 'flight-ticket' && <FlightTicketScreen {...props} />}
 
-        {/* Hotel Flow */}
-        {screen === 'hotel-search-results' && <HotelSearchResultsScreen {...props} />}
-        {screen === 'hotel-filter' && <HotelFilterScreen {...props} />}
-        {screen === 'hotel-details' && <HotelDetailsScreen {...props} />}
-        {screen === 'hotel-guest-details' && <HotelGuestDetailsScreen {...props} />}
-        {screen === 'hotel-ticket' && <HotelTicketScreen {...props} />}
+            {/* Hotel Flow */}
+            {screen === 'hotel-search-results' && <HotelSearchResultsScreen {...props} />}
+            {screen === 'hotel-filter' && <HotelFilterScreen {...props} />}
+            {screen === 'hotel-details' && <HotelDetailsScreen {...props} />}
+            {screen === 'hotel-guest-details' && <HotelGuestDetailsScreen {...props} />}
+            {screen === 'hotel-ticket' && <HotelTicketScreen {...props} />}
 
-        {/* Universal Travel Screens */}
-        {screen === 'payment' && <PaymentScreen {...props} />}
-        {screen === 'my-trips' && <MyTripsScreen onNavigate={nav} booking={booking} />}
-        {screen === 'cancel-ticket' && <CancelTicketScreen onNavigate={nav} booking={booking} />}
-        {screen === 'refund-status' && <RefundStatusScreen onNavigate={nav} booking={booking} />}
-        {screen === 'safety-center' && <SafetyCenterScreen onNavigate={nav} booking={booking} />}
-        {screen === 'trip-sharing' && <TripSharingScreen onNavigate={nav} booking={booking} />}
-        {screen === 'profile' && <ProfileScreen onNavigate={nav} />}
-        {screen === 'saved-passengers' && <SavedPassengersScreen onNavigate={nav} />}
-        {screen === 'offers' && <OffersScreen onNavigate={nav} />}
-        {screen === 'help-support' && <HelpSupportScreen onNavigate={nav} />}
-        {screen === 'notifications' && <NotificationsScreen onNavigate={nav} />}
-        {screen === 'settings' && <SettingsScreen onNavigate={nav} />}
-        {screen === 'side-menu' && <SideMenuScreen onNavigate={nav} />}
-      </View>
-    </SafeAreaView>
+            {/* Cab & Auto Flow */}
+            {screen === 'cab-search-results' && <CabSearchResultsScreen {...props} />}
+            {screen === 'auto-search-results' && <CabSearchResultsScreen {...props} />}
+            {screen === 'cab-tracking' && <CabTrackingScreen {...props} />}
+
+            {/* Universal Travel Screens */}
+            {screen === 'payment' && <PaymentScreen {...props} />}
+            {screen === 'my-trips' && <MyTripsScreen {...props} />}
+            {screen === 'cancel-ticket' && <CancelTicketScreen {...props} />}
+            {screen === 'refund-status' && <RefundStatusScreen {...props} />}
+            {screen === 'safety-center' && <SafetyCenterScreen {...props} />}
+            {screen === 'trip-sharing' && <TripSharingScreen {...props} />}
+            {screen === 'profile' && <ProfileScreen {...props} />}
+            {screen === 'saved-passengers' && <SavedPassengersScreen {...props} />}
+            {screen === 'offers' && <OffersScreen {...props} />}
+            {screen === 'help-support' && <HelpSupportScreen {...props} />}
+            {screen === 'notifications' && <NotificationsScreen {...props} />}
+            {screen === 'settings' && <SettingsScreen {...props} />}
+            {screen === 'side-menu' && <SideMenuScreen {...props} />}
+          </View>
+        </SafeAreaView>
+      </BookingProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { ArrowLeft, Bell, Bus, Train, Plane, Building2, DollarSign, Info, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, Bell, Bus, Train, Plane, Building2, DollarSign, CheckCircle2 } from 'lucide-react-native';
 import { notificationService } from '../services/miscService';
 
 const TYPE_ICON_MAP = {

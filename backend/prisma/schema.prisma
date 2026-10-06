@@ -64,6 +64,25 @@ enum BookingType {
   TRAIN
   FLIGHT
   HOTEL
+  CAB
+}
+
+enum CabCategory {
+  AUTO
+  CAB
+  SEDAN
+  SUV
+  EV
+}
+
+enum CabRideStatus {
+  SEARCHING
+  ACCEPTED
+  ARRIVING
+  ARRIVED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
 }
 
 enum BookingStatus {
@@ -610,6 +629,7 @@ model Booking {
   trainBooking  TrainBooking?
   flightBooking FlightBooking?
   hotelBooking  HotelBooking?
+  cabBooking    CabBooking?
 
   @@index([bookingReference])
   @@index([userId])
@@ -695,6 +715,90 @@ model HotelBooking {
   @@index([hotelId])
   @@index([roomId])
   @@map("hotel_bookings")
+}
+
+// ----------------------------------------------------
+// 6b. CAB & TAXI SYSTEM
+// ----------------------------------------------------
+
+model CabDriver {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String   @unique
+  rating      Float    @default(4.9)
+  totalTrips  Int      @default(0)
+  avatar      String?
+  isAvailable Boolean  @default(true)
+  currentLat  Float?
+  currentLng  Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicles    CabVehicle[]
+  cabBookings CabBooking[]
+
+  @@map("cab_drivers")
+}
+
+model CabVehicle {
+  id           String      @id @default(uuid())
+  driverId     String?
+  name         String
+  tagline      String?
+  category     CabCategory @default(CAB)
+  vehicleModel String
+  plateNumber  String      @unique
+  seats        Int         @default(4)
+  isEv         Boolean     @default(false)
+  emoji        String?     @default("🚗")
+  popularBadge String?
+  features     String?     @db.Text
+  baseFare     Float
+  perKmRate    Float       @default(12.0)
+  discountFare Float?
+  etaMin       Int         @default(3)
+  city         String      @default("Mumbai")
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  driver      CabDriver?   @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  cabBookings CabBooking[]
+
+  @@index([driverId])
+  @@index([category])
+  @@index([city])
+  @@map("cab_vehicles")
+}
+
+model CabBooking {
+  id            String        @id @default(uuid())
+  bookingId     String        @unique
+  vehicleId     String?
+  driverId      String?
+  pickupAddress String
+  pickupLat     Float?
+  pickupLng     Float?
+  dropAddress   String
+  dropLat       Float?
+  dropLng       Float?
+  distance      String?
+  duration      String?
+  otp           String
+  rideStatus    CabRideStatus @default(ARRIVING)
+  estimatedFare Float
+  finalFare     Float?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking Booking     @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vehicle CabVehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver  CabDriver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([rideStatus])
+  @@map("cab_bookings")
 }
 
 // ----------------------------------------------------

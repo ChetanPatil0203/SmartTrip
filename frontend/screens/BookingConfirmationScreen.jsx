@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from "react-native";
 import { CheckCircle2, Download, Share2, Ticket, QrCode, ArrowRight } from "lucide-react-native";
 
-export default function BookingConfirmationScreen({ onNavigate, booking }) {
+export default function BookingConfirmationScreen({ onNavigate, booking = {} }) {
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -22,12 +22,13 @@ export default function BookingConfirmationScreen({ onNavigate, booking }) {
     ]).start();
   }, [scaleAnim, opacityAnim]);
 
-  const seats = booking.selectedSeats.length || 1;
+  const currentBooking = booking || {};
+  const seats = currentBooking.selectedSeats?.length || 1;
   const total =
-    booking.totalAmount ||
-    (booking.selectedBus?.price ?? 750) * seats + 40 - (booking.discount || 0);
-  const pnr = booking.pnr || "SB" + Math.floor(10000000 + Math.random() * 90000000);
-  const bookingId = booking.bookingId || "ST-BK-948201";
+    currentBooking.totalAmount ||
+    (currentBooking.selectedBus?.price ?? 750) * seats + 40 - (currentBooking.discount || 0);
+  const pnr = currentBooking.pnr || "ST" + Math.floor(10000000 + Math.random() * 90000000);
+  const bookingId = currentBooking.bookingId || "ST-BK-948201";
 
   const Row = ({ label, value }) => (
     <View style={styles.detailRow}>
@@ -70,7 +71,7 @@ export default function BookingConfirmationScreen({ onNavigate, booking }) {
             <View style={styles.qrGrid}>
               {Array.from({ length: 49 }).map((_, i) => {
                 const corner =
-                  (i < 7 && i < 2) || (i < 7 && i > 4) || (i > 41 && i < 44) || (i > 41 && i > 46);
+                  i < 2 || (i < 7 && i > 4) || (i > 41 && i < 44) || i > 46;
                 const fill = Math.sin(i * 2.3 + 1) > 0 || corner;
                 return (
                   <View

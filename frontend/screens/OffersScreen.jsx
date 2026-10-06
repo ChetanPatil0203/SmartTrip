@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import BottomNav from '../components/BottomNav';
-import { ArrowLeft, Tag, Copy, Check, Bus, Train, Plane, Building2, ChevronRight, Gift } from 'lucide-react-native';
+import { ArrowLeft, Copy, Check } from 'lucide-react-native';
 import { offerService } from '../services/miscService';
 
 const categoryOffers = [
@@ -9,7 +9,7 @@ const categoryOffers = [
     id: 'OFF-1',
     category: 'bus',
     title: 'Flat 20% OFF on Bus Bookings',
-    code: 'SMARTBUS20',
+    code: 'SMARTTRIP20',
     discount: '20% OFF',
     validity: 'Valid till 30 Jun 2024',
     minBooking: '₹500',
@@ -59,7 +59,6 @@ export default function OffersScreen({ onNavigate }) {
   const [selectedCat, setSelectedCat] = useState('all');
   const [copiedCode, setCopiedCode] = useState(null);
   const [apiOffers, setApiOffers] = useState([]);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     offerService.getOffers({ limit: 50 })
@@ -84,8 +83,7 @@ export default function OffersScreen({ onNavigate }) {
           setApiOffers(categoryOffers);
         }
       })
-      .catch(() => setApiOffers(categoryOffers))
-      .finally(() => setLoading(false));
+      .catch(() => setApiOffers(categoryOffers));
   }, []);
 
   const handleCopy = (code) => {

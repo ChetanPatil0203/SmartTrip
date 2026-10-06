@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { ArrowLeft, Plane, ChevronRight, Check } from 'lucide-react-native';
+import { ArrowLeft, Plane, ChevronRight } from 'lucide-react-native';
 
 const seatRows = [
   { row: 1, type: 'premium', seats: [{ id: '1A', p: 500 }, { id: '1B', p: 350 }, { id: '1C', p: 350 }, { id: '1D', p: 350 }, { id: '1E', p: 350 }, { id: '1F', p: 500 }] },

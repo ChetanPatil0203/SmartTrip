@@ -7,6 +7,7 @@ const generateBookingReference = (bookingType) => {
     TRAIN: "STT",
     FLIGHT: "STF",
     HOTEL: "STH",
+    CAB: "STC",
   };
   const prefix = prefixes[bookingType.toUpperCase()] || "STB";
   const randomStr = crypto.randomBytes(4).toString("hex").toUpperCase();
@@ -454,6 +455,72 @@ const bookingService = {
             amount: finalTotalAmount,
             method: "UPI",
             status: "PENDING",
+          },
+        });
+
+        return booking;
+      }
+
+      // ----------------------------------------------------
+      // 5. CAB & TAXI BOOKING
+      // ----------------------------------------------------
+      if (type === "CAB") {
+        const vehicleId = body.vehicleId || targetScheduleId;
+        const pickupAddress = body.pickupAddress || body.pickup || "CSMT Mumbai";
+        const dropAddress = body.dropAddress || body.drop || "BKC Mumbai";
+        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+
+        let vehicle = null;
+        if (vehicleId) {
+          vehicle = await tx.cabVehicle.findUnique({ where: { id: vehicleId }, include: { driver: true } });
+        }
+        if (!vehicle) {
+          vehicle = await tx.cabVehicle.findFirst({ include: { driver: true } });
+        }
+
+        const finalTotalAmount = (totalAmount && parseFloat(totalAmount) > 0)
+          ? parseFloat(totalAmount)
+          : (vehicle ? (vehicle.discountFare || vehicle.baseFare) : 95);
+
+        const booking = await tx.booking.create({
+          data: {
+            userId,
+            bookingReference,
+            bookingType: "CAB",
+            status: "CONFIRMED",
+            totalAmount: finalTotalAmount,
+            travelDate: new Date(),
+          },
+        });
+
+        await tx.cabBooking.create({
+          data: {
+            bookingId: booking.id,
+            vehicleId: vehicle ? vehicle.id : null,
+            driverId: vehicle && vehicle.driver ? vehicle.driver.id : null,
+            pickupAddress,
+            pickupLat: body.pickupLat || 18.9401,
+            pickupLng: body.pickupLng || 72.8347,
+            dropAddress,
+            dropLat: body.dropLat || 19.0657,
+            dropLng: body.dropLng || 72.8687,
+            distance: body.distance || "14.2 km",
+            duration: body.duration || "28 mins",
+            otp,
+            rideStatus: "ARRIVING",
+            estimatedFare: vehicle ? vehicle.baseFare : finalTotalAmount,
+            finalFare: finalTotalAmount,
+          },
+        });
+
+        await tx.payment.create({
+          data: {
+            bookingId: booking.id,
+            paymentReference: `PAY-${bookingReference}`,
+            amount: finalTotalAmount,
+            method: body.paymentMethod || "CASH",
+            status: "SUCCESS",
+            paidAt: new Date(),
           },
         });
 

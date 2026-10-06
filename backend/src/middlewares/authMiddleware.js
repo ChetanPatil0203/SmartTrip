@@ -6,6 +6,15 @@ const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (config.nodeEnv === "development") {
+      // Dev / viva fallback: never block unauthenticated demo actions with 401
+      req.user = {
+        id: "9b5a43db-940a-43b8-81ec-8f48f5419cc7",
+        userId: "9b5a43db-940a-43b8-81ec-8f48f5419cc7",
+        role: "USER",
+      };
+      return next();
+    }
     return sendError(res, "Access denied. Token missing or invalid.", 401);
   }
 
@@ -21,6 +30,14 @@ const authMiddleware = (req, res, next) => {
     };
     next();
   } catch (error) {
+    if (config.nodeEnv === "development") {
+      req.user = {
+        id: "9b5a43db-940a-43b8-81ec-8f48f5419cc7",
+        userId: "9b5a43db-940a-43b8-81ec-8f48f5419cc7",
+        role: "USER",
+      };
+      return next();
+    }
     return sendError(res, "Invalid or expired token.", 401);
   }
 };

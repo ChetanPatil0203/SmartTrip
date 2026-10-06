@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, StyleSheet } from 'react-native';
-import { ArrowLeft, UserPlus, Trash2, ShieldCheck, ChevronRight, User } from 'lucide-react-native';
+import { ArrowLeft, ChevronRight, User } from 'lucide-react-native';
 
 export default function FlightPassengerDetailsScreen({ onNavigate, booking, setBooking }) {
   const [fullName, setFullName] = useState('Rahul Sharma');

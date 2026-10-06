@@ -148,8 +148,8 @@ export default function SearchResultsScreen({ onNavigate, booking, setBooking })
             actionLabel="Change Filters"
           />
         ) : (
-          sorted.map((bus) => (
-            <View key={bus.id} style={styles.busCard}>
+          sorted.map((bus, idx) => (
+            <View key={bus.id ? `bus-${bus.id}-${idx}` : `bus-idx-${idx}`} style={styles.busCard}>
               {/* Operator Header */}
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1, paddingRight: 8 }}>

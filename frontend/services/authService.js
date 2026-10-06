@@ -12,8 +12,8 @@ const authService = {
   },
 
   // POST /api/auth/login
-  login: async ({ phone, password }) => {
-    const res = await api.post('/auth/login', { phone, password });
+  login: async ({ phone, email, password }) => {
+    const res = await api.post('/auth/login', { phone, email, password });
     if (res?.data?.token) {
       await setToken(res.data.token);
       await setUser(res.data.user);
@@ -24,9 +24,10 @@ const authService = {
   // POST /api/auth/logout
   logout: async () => {
     try {
-      await api.post('/auth/logout', {}, true);
+      await api.post('/auth/logout', {}, false);
     } catch {}
     await removeToken();
+    await setUser(null);
   },
 
   // GET /api/users/me

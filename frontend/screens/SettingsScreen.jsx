@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Switch } from 'react-native';
 import { ArrowLeft, Bell, Moon, Globe, Shield, Smartphone, ChevronRight, LogOut } from 'lucide-react-native';
+import authService from '../services/authService';
 
 export default function SettingsScreen({ onNavigate }) {
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {}
+    onNavigate('login');
+  };
   const [s, setS] = useState({
     pushNotifs: true,
     emailNotifs: false,
@@ -67,7 +74,7 @@ export default function SettingsScreen({ onNavigate }) {
         </Section>
 
         <View style={styles.card}>
-          <TouchableOpacity onPress={() => onNavigate('login')} style={styles.row} activeOpacity={0.7}>
+          <TouchableOpacity onPress={handleLogout} style={styles.row} activeOpacity={0.7}>
             <View style={styles.logoutIconBox}>
               <LogOut size={17} color="#D13239" />
             </View>
@@ -75,7 +82,7 @@ export default function SettingsScreen({ onNavigate }) {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.footerVersionText}>SmartBus v1.0.0 · Made with ❤️</Text>
+        <Text style={styles.footerVersionText}>SmartTrip v1.0.0 · Made with ❤️</Text>
       </ScrollView>
     </View>
   );

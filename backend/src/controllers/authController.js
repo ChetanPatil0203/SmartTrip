@@ -21,4 +21,8 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+const logout = async (req, res) => {
+  return sendSuccess(res, "Logout successful", { message: "User logged out successfully" }, 200);
+};
+
+module.exports = { register, login, logout };

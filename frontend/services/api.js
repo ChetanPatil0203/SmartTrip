@@ -6,18 +6,33 @@
 // For Android emulator use 'http://10.0.2.2:5000'.
 // For iOS simulator / web use 'http://localhost:5000'.
 // ============================================================
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Determine appropriate API host based on execution environment
-const getBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000/api';
-  }
+// Automatically detect host IP (works on Web, Android Emulator, iOS Simulator, and Physical Devices over Expo LAN)
+const getHostAddress = () => {
+  // 1. Web browser
   if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-    return `http://${window.location.hostname}:5000/api`;
+    return window.location.hostname;
   }
-  return 'http://localhost:5000/api';
+  // 2. Metro packager bundle URL (gives real Wi-Fi LAN IP e.g. 192.168.x.x or 10.x.x.x on real phones)
+  const scriptURL = NativeModules?.SourceCode?.scriptURL;
+  if (scriptURL) {
+    const match = scriptURL.match(/^https?:\/\/([^:/]+)/);
+    if (match && match[1] && match[1] !== 'localhost' && match[1] !== '127.0.0.1') {
+      return match[1];
+    }
+  }
+  // 3. Android emulator loopback fallback
+  if (Platform.OS === 'android') {
+    return '10.0.2.2';
+  }
+  return 'localhost';
+};
+
+const getBaseUrl = () => {
+  const host = getHostAddress();
+  return `http://${host}:5000/api`;
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -91,9 +106,32 @@ export const getUser = async () => {
 };
 
 // -------------------------------------------------------
-// Core fetch wrapper
+// Core fetch wrapper with 10s Timeout and Exponential Retry
 // -------------------------------------------------------
-const request = async (method, endpoint, body = null, requiresAuth = false) => {
+const TIMEOUT_MS = 10000;
+
+const fetchWithTimeout = async (url, options, timeout = TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      const timeoutErr = new Error('Connection timed out. Please check your network and try again.');
+      timeoutErr.statusCode = 408;
+      throw timeoutErr;
+    }
+    throw error;
+  }
+};
+
+const request = async (method, endpoint, body = null, requiresAuth = false, retries = 2) => {
   const headers = { 'Content-Type': 'application/json' };
 
   if (requiresAuth) {
@@ -110,25 +148,37 @@ const request = async (method, endpoint, body = null, requiresAuth = false) => {
     config.body = JSON.stringify(body);
   }
 
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    const data = await response.json();
+  let attempt = 0;
+  while (attempt <= retries) {
+    try {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, config);
+      const data = await response.json();
 
-    if (!response.ok) {
-      const error = new Error(data?.message || 'Request failed');
-      error.statusCode = response.status;
-      error.errorCode = data?.errorCode;
-      error.data = data;
-      throw error;
+      if (!response.ok) {
+        const error = new Error(data?.message || 'Request failed');
+        error.statusCode = response.status;
+        error.errorCode = data?.errorCode;
+        error.data = data;
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      if (error.statusCode && error.statusCode !== 408 && error.statusCode >= 400 && error.statusCode < 500) {
+        // Client errors (400, 401, 403, 404, etc.) shouldn't be retried
+        throw error;
+      }
+
+      attempt++;
+      if (attempt > retries) {
+        if (error.statusCode) throw error;
+        const netErr = new Error('Network error — please check your internet connection and ensure backend is running.');
+        netErr.statusCode = 0;
+        throw netErr;
+      }
+      // Exponential backoff before retry (e.g. 500ms, 1000ms)
+      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
     }
-
-    return data;
-  } catch (error) {
-    if (error.statusCode) throw error;
-    // Network error
-    const netErr = new Error('Network error — please check your connection');
-    netErr.statusCode = 0;
-    throw netErr;
   }
 };
 

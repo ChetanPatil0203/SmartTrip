@@ -1,8 +1,14 @@
+require("./env");
 const { PrismaClient } = require("@prisma/client");
 const logger = require("../utils/logger");
 
 const prisma = new PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+  log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
 });
 
 const connectDB = async () => {

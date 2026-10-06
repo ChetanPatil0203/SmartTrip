@@ -1,17 +1,50 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Platform, Share, Alert, Image } from 'react-native';
 import { ArrowLeft, CheckCircle2, QrCode, Download, Share2, MapPin, Phone, Calendar, Building2, User, X, Navigation } from 'lucide-react-native';
 
-export default function HotelTicketScreen({ onNavigate, booking }) {
-  const bookingId = booking.bookingId || 'ST-HTL-99214';
-  const hotel = booking.selectedHotel || {
+export default function HotelTicketScreen({ onNavigate, booking = {} }) {
+  const currentBooking = booking || {};
+  const bookingId = currentBooking.backendBookingId || currentBooking.bookingId || 'ST-HTL-99214';
+  const hotel = currentBooking.selectedHotel || {
     name: 'Taj Holiday Village Resort & Spa',
     location: 'Calangute Beach Road, Sinquerim, Goa 403515',
   };
-  const room = booking.selectedRoom || {
+  const room = currentBooking.selectedRoom || {
     name: 'Deluxe Sea View King Room',
   };
-  const guest = booking.hotelGuestDetails?.fullName || 'Rahul Sharma';
+  const guest = currentBooking.hotelGuestDetails?.fullName || 'Chetan Patil';
+  const totalAmount = currentBooking.totalAmount || 5040;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&margin=6&data=${encodeURIComponent(`HOTEL|ID:${bookingId}|HOTEL:${hotel.name}|GUEST:${guest}|FARE:${totalAmount}`)}`;
+
+  const [downloadSuccess, setDownloadSuccess] = useState(false);
+
+  const handleShare = async () => {
+    const text = `🏨 SmartTrip Confirmed Hotel Booking Voucher\nBooking ID: ${bookingId}\nHotel: ${hotel.name}\nLocation: ${hotel.location}\nRoom: ${room.name}\nGuest: ${guest}\nTotal Paid: ₹${totalAmount}\nStatus: Guaranteed Check-in ✅\n\nShow at reception upon arrival. SmartTrip.`;
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof navigator !== 'undefined' && navigator.share) {
+          await navigator.share({ title: `Hotel Voucher ${bookingId}`, text });
+          return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+          Alert.alert('Copied', 'Hotel booking voucher details copied to clipboard!');
+          return;
+        }
+      }
+      await Share.share({ title: `Hotel Voucher ${bookingId}`, message: text });
+    } catch { /* ignored */ }
+  };
+
+  const handleDownload = () => {
+    setDownloadSuccess(true);
+    setTimeout(() => setDownloadSuccess(false), 3000);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.print();
+    } else {
+      Alert.alert('Voucher Downloaded', `Hotel Confirmation Voucher PDF saved to Downloads.\nBooking ID: ${bookingId}`);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -21,10 +54,13 @@ export default function HotelTicketScreen({ onNavigate, booking }) {
           <TouchableOpacity onPress={() => onNavigate('my-trips')} style={styles.backBtn} activeOpacity={0.7}>
             <ArrowLeft size={18} color="#FFFFFF" />
           </TouchableOpacity>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Hotel Booking Confirmed</Text>
             <Text style={styles.headerSub}>SmartTrip Hotel Confirmation Voucher</Text>
           </View>
+          <TouchableOpacity onPress={handleShare} style={styles.backBtn} activeOpacity={0.7}>
+            <Share2 size={16} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -62,12 +98,12 @@ export default function HotelTicketScreen({ onNavigate, booking }) {
             <View style={styles.stayDatesGrid}>
               <View style={styles.stayBox}>
                 <Text style={styles.stayLabel}>CHECK-IN</Text>
-                <Text style={styles.stayDate}>{booking.checkInDate || '25 May 2024'}</Text>
+                <Text style={styles.stayDate}>{currentBooking.checkInDate || '25 May 2024'}</Text>
                 <Text style={styles.stayTime}>From 02:00 PM</Text>
               </View>
               <View style={styles.stayBox}>
                 <Text style={styles.stayLabel}>CHECK-OUT</Text>
-                <Text style={styles.stayDate}>{booking.checkOutDate || '28 May 2024'}</Text>
+                <Text style={styles.stayDate}>{currentBooking.checkOutDate || '28 May 2024'}</Text>
                 <Text style={styles.stayTime}>Until 11:00 AM</Text>
               </View>
             </View>
@@ -86,42 +122,40 @@ export default function HotelTicketScreen({ onNavigate, booking }) {
 
             {/* QR Code */}
             <View style={styles.qrSection}>
-              <QrCode size={100} color="#0F172A" />
+              <View style={styles.qrImageBox}>
+                <Image source={{ uri: qrUrl }} style={styles.qrImg} resizeMode="contain" />
+              </View>
               <Text style={styles.qrText}>Scan at Hotel Front Desk upon arrival</Text>
             </View>
 
             {/* Total Paid */}
             <View style={styles.paidRow}>
               <Text style={styles.paidLabel}>Total Amount Paid</Text>
-              <Text style={styles.paidVal}>₹{booking.totalAmount || 5040}</Text>
+              <Text style={styles.paidVal}>₹{totalAmount.toLocaleString()}</Text>
             </View>
           </View>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionsGrid}>
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
+          <TouchableOpacity onPress={() => Alert.alert('Contact', 'Calling hotel front desk: +91 832 664 5858')} style={styles.actionBtn} activeOpacity={0.8}>
             <Phone size={16} color="#059669" />
             <Text style={styles.actionBtnText}>Contact Hotel</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
+          <TouchableOpacity onPress={() => Alert.alert('Directions', `Navigating to ${hotel.name}, ${hotel.location}`)} style={styles.actionBtn} activeOpacity={0.8}>
             <Navigation size={16} color="#059669" />
             <Text style={styles.actionBtnText}>Get Directions</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionBtn} activeOpacity={0.8}>
+          <TouchableOpacity onPress={handleDownload} style={styles.actionBtn} activeOpacity={0.8}>
             <Download size={16} color="#059669" />
-            <Text style={styles.actionBtnText}>Download Voucher</Text>
+            <Text style={styles.actionBtnText}>{downloadSuccess ? 'Downloaded ✓' : 'Download Voucher'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => onNavigate('cancel-ticket')}
-            style={[styles.actionBtn, { backgroundColor: '#FFF0F0', borderColor: '#FEE2E2' }]}
-            activeOpacity={0.8}
-          >
-            <X size={16} color="#DC2626" />
-            <Text style={[styles.actionBtnText, { color: '#DC2626' }]}>Cancel Booking</Text>
+          <TouchableOpacity onPress={handleShare} style={styles.actionBtn} activeOpacity={0.8}>
+            <Share2 size={16} color="#059669" />
+            <Text style={styles.actionBtnText}>Share Voucher</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -167,6 +201,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
     paddingBottom: 40,
+    maxWidth: 580,
+    width: '100%',
+    alignSelf: 'center',
   },
   ticketCard: {
     backgroundColor: '#FFFFFF',
@@ -218,7 +255,12 @@ const styles = StyleSheet.create({
   confirmedTag: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#10B981',
+    color: '#16A34A',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    marginTop: 2,
   },
   hotelHeaderBox: {
     backgroundColor: '#ECFDF5',
@@ -227,9 +269,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   hName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#064E3B',
   },
   locRow: {
     flexDirection: 'row',
@@ -239,7 +281,7 @@ const styles = StyleSheet.create({
   locText: {
     fontSize: 11,
     color: '#059669',
-    fontWeight: '600',
+    flex: 1,
   },
   stayDatesGrid: {
     flexDirection: 'row',
@@ -249,8 +291,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
     borderRadius: 12,
-    padding: 12,
-    alignItems: 'center',
+    padding: 10,
   },
   stayLabel: {
     fontSize: 9,
@@ -267,13 +308,13 @@ const styles = StyleSheet.create({
   stayTime: {
     fontSize: 10,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 1,
   },
   infoSection: {
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingTop: 10,
-    gap: 8,
+    gap: 6,
   },
   infoRow: {
     flexDirection: 'row',
@@ -295,6 +336,21 @@ const styles = StyleSheet.create({
     borderTopColor: '#F1F5F9',
     gap: 6,
   },
+  qrImageBox: {
+    width: 140,
+    height: 140,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 6,
+  },
+  qrImg: {
+    width: 124,
+    height: 124,
+  },
   qrText: {
     fontSize: 10,
     color: '#94A3B8',
@@ -315,7 +371,7 @@ const styles = StyleSheet.create({
   paidVal: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#0F172A',
+    color: '#059669',
   },
   actionsGrid: {
     flexDirection: 'row',

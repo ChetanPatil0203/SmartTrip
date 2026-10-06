@@ -542,6 +542,193 @@ async function main() {
     ],
   });
 
+  // ==========================================
+  // 5. CAB & TAXI SYSTEM SEEDING
+  // ==========================================
+  console.log('5. Seeding Cab & Taxi System...');
+
+  const driverRamesh = await prisma.cabDriver.upsert({
+    where: { phone: '+91 9823456789' },
+    update: {},
+    create: {
+      id: 'driver-ramesh',
+      name: 'Ramesh Pawar',
+      phone: '+91 9823456789',
+      rating: 4.9,
+      totalTrips: 1840,
+      avatar: '👨🏽‍✈️',
+      currentLat: 18.9401,
+      currentLng: 72.8347,
+    },
+  });
+
+  const driverAmit = await prisma.cabDriver.upsert({
+    where: { phone: '+91 9823412345' },
+    update: {},
+    create: {
+      id: 'driver-amit',
+      name: 'Amit Shinde',
+      phone: '+91 9823412345',
+      rating: 4.9,
+      totalTrips: 920,
+      avatar: '👨🏽‍✈️',
+      currentLat: 18.9415,
+      currentLng: 72.8360,
+    },
+  });
+
+  const driverSanjay = await prisma.cabDriver.upsert({
+    where: { phone: '+91 9819876543' },
+    update: {},
+    create: {
+      id: 'driver-sanjay',
+      name: 'Sanjay Gaikwad',
+      phone: '+91 9819876543',
+      rating: 4.8,
+      totalTrips: 1420,
+      avatar: '👨🏽‍✈️',
+      currentLat: 18.9430,
+      currentLng: 72.8355,
+    },
+  });
+
+  const driverRajesh = await prisma.cabDriver.upsert({
+    where: { phone: '+91 9820011223' },
+    update: {},
+    create: {
+      id: 'driver-rajesh',
+      name: 'Rajesh More',
+      phone: '+91 9820011223',
+      rating: 4.9,
+      totalTrips: 2150,
+      avatar: '👨🏽‍✈️',
+      currentLat: 18.9390,
+      currentLng: 72.8330,
+    },
+  });
+
+  const driverVikram = await prisma.cabDriver.upsert({
+    where: { phone: '+91 9821122334' },
+    update: {},
+    create: {
+      id: 'driver-vikram',
+      name: 'Vikram Patil',
+      phone: '+91 9821122334',
+      rating: 4.9,
+      totalTrips: 3400,
+      avatar: '👨🏽‍✈️',
+      currentLat: 18.9445,
+      currentLng: 72.8375,
+    },
+  });
+
+  // Cab & Taxi Vehicles
+  const cabVehicles = [
+    {
+      id: 'auto-std',
+      driverId: driverRamesh.id,
+      name: 'Smart Auto',
+      tagline: 'Affordable, quick city commute',
+      category: 'AUTO',
+      vehicleModel: 'Bajaj RE / TVS King',
+      plateNumber: 'MH 01 AB 4321',
+      seats: 3,
+      isEv: false,
+      emoji: '🛺',
+      popularBadge: 'MOST POPULAR',
+      features: JSON.stringify(['No bargaining', 'Pocket friendly', 'Direct pickup']),
+      baseFare: 95,
+      perKmRate: 15.0,
+      discountFare: 80,
+      etaMin: 2,
+      city: 'Mumbai',
+    },
+    {
+      id: 'auto-ev',
+      driverId: driverAmit.id,
+      name: 'Smart Auto EV',
+      tagline: '100% Electric, silent & eco-friendly',
+      category: 'AUTO',
+      vehicleModel: 'Mahindra Treo / Piaggio Ape E',
+      plateNumber: 'MH 03 EV 1209',
+      seats: 3,
+      isEv: true,
+      emoji: '⚡🛺',
+      popularBadge: 'GREEN RIDE',
+      features: JSON.stringify(['Zero emissions', 'Quiet ride', 'Clean vehicle']),
+      baseFare: 105,
+      perKmRate: 14.0,
+      discountFare: 90,
+      etaMin: 3,
+      city: 'Mumbai',
+    },
+    {
+      id: 'cab-mini',
+      driverId: driverSanjay.id,
+      name: 'Smart Cab Mini',
+      tagline: 'Everyday pocket-friendly AC rides',
+      category: 'CAB',
+      vehicleModel: 'Maruti WagonR / Tata Tiago',
+      plateNumber: 'MH 02 CE 8976',
+      seats: 4,
+      isEv: false,
+      emoji: '🚗',
+      popularBadge: null,
+      features: JSON.stringify(['Compact AC', 'Trained driver', 'Boot space for 2 bags']),
+      baseFare: 195,
+      perKmRate: 18.0,
+      discountFare: 175,
+      etaMin: 4,
+      city: 'Mumbai',
+    },
+    {
+      id: 'cab-sedan',
+      driverId: driverRajesh.id,
+      name: 'Prime Sedan',
+      tagline: 'Comfortable spacious sedans & top drivers',
+      category: 'SEDAN',
+      vehicleModel: 'Maruti Dzire / Honda Amaze',
+      plateNumber: 'MH 02 CD 4589',
+      seats: 4,
+      isEv: false,
+      emoji: '🚘',
+      popularBadge: 'TOP RATED',
+      features: JSON.stringify(['Extra legroom', 'Top 5★ drivers', 'Large boot space']),
+      baseFare: 265,
+      perKmRate: 22.0,
+      discountFare: 240,
+      etaMin: 3,
+      city: 'Mumbai',
+    },
+    {
+      id: 'cab-suv',
+      driverId: driverVikram.id,
+      name: 'Prime SUV / XL',
+      tagline: 'Spacious 6-seater for group & heavy luggage',
+      category: 'SUV',
+      vehicleModel: 'Maruti Ertiga / Toyota Innova',
+      plateNumber: 'MH 04 DX 5432',
+      seats: 6,
+      isEv: false,
+      emoji: '🚙',
+      popularBadge: '6 SEATER',
+      features: JSON.stringify(['6 Passenger seats', 'Maximum luggage', 'AC in all rows']),
+      baseFare: 420,
+      perKmRate: 28.0,
+      discountFare: 385,
+      etaMin: 6,
+      city: 'Mumbai',
+    },
+  ];
+
+  for (const v of cabVehicles) {
+    await prisma.cabVehicle.upsert({
+      where: { plateNumber: v.plateNumber },
+      update: {},
+      create: v,
+    });
+  }
+
   console.log('✅ Seeding completed successfully!');
 }
 

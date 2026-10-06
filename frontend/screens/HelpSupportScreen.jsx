@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Alert, ActivityIndicator } from 'react-native';
-import { ArrowLeft, MessageSquare, Phone, HelpCircle, ChevronDown, ChevronUp, ChevronRight, Bus, Train, Plane, Building2, ShieldAlert, Send } from 'lucide-react-native';
+import { ArrowLeft, MessageSquare, Phone, ChevronDown, ChevronUp, ChevronRight, Bus, Train, Plane, Building2, ShieldAlert, Send } from 'lucide-react-native';
 import { supportService } from '../services/miscService';
 
 

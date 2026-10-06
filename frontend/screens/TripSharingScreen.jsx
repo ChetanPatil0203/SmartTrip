@@ -3,13 +3,14 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-nati
 import { ArrowLeft, Share2, Copy, Check, MessageCircle, Phone, Mail, Link2, MapPin, Clock, Bus } from 'lucide-react-native';
 import bookingService from '../services/bookingService';
 
-export default function TripSharingScreen({ onNavigate, booking }) {
+export default function TripSharingScreen({ onNavigate, booking = {} }) {
+  const currentBooking = booking || {};
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [shareLink, setShareLink] = useState(`https://smarttrip.in/track/${booking.pnr || 'ST12345678'}`);
+  const [shareLink, setShareLink] = useState(`https://smarttrip.in/track/${currentBooking.pnr || 'ST12345678'}`);
 
   useEffect(() => {
-    const bId = booking.backendBookingId || booking.id;
+    const bId = currentBooking.backendBookingId || currentBooking.id;
     if (bId) {
       bookingService.shareTrip(bId)
         .then(res => {
@@ -21,7 +22,7 @@ export default function TripSharingScreen({ onNavigate, booking }) {
         })
         .catch(() => {});
     }
-  }, [booking]);
+  }, [currentBooking]);
 
   const copyLink = () => {
     setCopied(true);
@@ -56,7 +57,7 @@ export default function TripSharingScreen({ onNavigate, booking }) {
           <View style={styles.colorStrip} />
           <View style={styles.cardPad}>
             <View style={styles.liveHeaderRow}>
-              <Text style={styles.brandTitle}>LIVE TRIP · SMARTBUS</Text>
+              <Text style={styles.brandTitle}>LIVE TRIP · SMARTTRIP</Text>
               <View style={styles.liveBadge}>
                 <View style={styles.liveDot} />
                 <Text style={styles.liveText}>LIVE</Text>
@@ -65,10 +66,10 @@ export default function TripSharingScreen({ onNavigate, booking }) {
 
             <View style={styles.grid2}>
               {[
-                { Icon: Bus, label: 'PNR', value: booking.pnr || 'SB12345678', color: '#D13239' },
-                { Icon: MapPin, label: 'From → To', value: `${booking.from || 'Mumbai'} → ${booking.to || 'Pune'}`, color: '#2563EB' },
-                { Icon: Clock, label: 'ETA', value: booking.selectedBus?.arrival || '11:00 PM', color: '#059669' },
-                { Icon: MapPin, label: 'Drop Point', value: booking.droppingPoint || 'Swargate', color: '#D97706' },
+                { Icon: Bus, label: 'PNR', value: currentBooking.pnr || 'ST12345678', color: '#D13239' },
+                { Icon: MapPin, label: 'From → To', value: `${currentBooking.from || 'Mumbai'} → ${currentBooking.to || 'Pune'}`, color: '#2563EB' },
+                { Icon: Clock, label: 'ETA', value: currentBooking.selectedBus?.arrival || '11:00 PM', color: '#059669' },
+                { Icon: MapPin, label: 'Drop Point', value: currentBooking.droppingPoint || 'Swargate', color: '#D97706' },
               ].map(({ Icon, label, value, color }) => (
                 <View key={label} style={styles.gridCell}>
                   <View style={styles.cellHeaderRow}>

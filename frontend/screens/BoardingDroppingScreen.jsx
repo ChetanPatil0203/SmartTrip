@@ -116,7 +116,7 @@ const PointCard = ({
   );
 };
 
-export default function BoardingDroppingScreen({ onNavigate, booking, setBooking }) {
+export default function BoardingDroppingScreen({ onNavigate, _booking, setBooking }) {
   const [boardIdx, setBoardIdx] = useState(0);
   const [dropIdx, setDropIdx] = useState(1);
   const [showBoard, setShowBoard] = useState(false);

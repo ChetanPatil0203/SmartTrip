@@ -209,8 +209,8 @@ export default function TrainSearchResultsScreen({ onNavigate, booking, setBooki
             actionLabel="Modify Search"
           />
         ) : (
-          trains.map((train) => (
-            <View key={train.number} style={styles.trainCard}>
+          trains.map((train, idx) => (
+            <View key={train.number ? `train-${train.number}-${idx}` : `train-${idx}`} style={styles.trainCard}>
               {/* Top Bar */}
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1, paddingRight: 8 }}>

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Home, Ticket, Tag, User, HelpCircle, Settings, LogOut, ChevronRight, Zap, X } from 'lucide-react-native';
+import authService from '../services/authService';
 
 const items = [
   { Icon: Home, label: 'Home', sub: 'Main dashboard', screen: 'home', color: '#D13239' },
@@ -12,6 +13,28 @@ const items = [
 ];
 
 export default function SideMenuScreen({ onNavigate }) {
+  const [currentUser, setCurrentUser] = useState({
+    name: 'Smart Traveler',
+    email: 'traveler@smarttrip.in',
+  });
+
+  useEffect(() => {
+    authService.getUser().then((u) => {
+      if (u) {
+        setCurrentUser({
+          name: u.name || 'Smart Traveler',
+          email: u.email || u.phone || 'traveler@smarttrip.in',
+        });
+      }
+    });
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {}
+    onNavigate('login');
+  };
   return (
     <View style={styles.overlay}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={() => onNavigate('home')}>
@@ -31,19 +54,23 @@ export default function SideMenuScreen({ onNavigate }) {
               <View style={styles.logoBox}>
                 <Zap size={20} color="#FFD700" fill="#FFD700" />
               </View>
-              <Text style={styles.appName}>SmartBus</Text>
+              <Text style={styles.appName}>SmartTrip</Text>
             </View>
 
             {/* User */}
-            <View style={styles.userRow}>
+            <TouchableOpacity
+              onPress={() => onNavigate('profile')}
+              style={styles.userRow}
+              activeOpacity={0.8}
+            >
               <View style={styles.userAvatar}>
                 <User size={22} color="#FFFFFF" />
               </View>
-              <View>
-                <Text style={styles.userName}>Rohit Patil</Text>
-                <Text style={styles.userEmail}>rohit@email.com</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.userName} numberOfLines={1}>{currentUser.name}</Text>
+                <Text style={styles.userEmail} numberOfLines={1}>{currentUser.email}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Menu Items */}
@@ -70,7 +97,7 @@ export default function SideMenuScreen({ onNavigate }) {
           {/* Logout */}
           <View style={styles.footer}>
             <TouchableOpacity
-              onPress={() => onNavigate('login')}
+              onPress={handleLogout}
               style={styles.logoutBtn}
               activeOpacity={0.8}
             >

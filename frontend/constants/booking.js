@@ -56,6 +56,17 @@ export const initBooking = {
     specialRequests: [],
   },
 
+  // Cab & Auto specific
+  ridePickup: 'Chhatrapati Shivaji Maharaj Terminus (CSMT), Mumbai',
+  rideDrop: 'Bandra Kurla Complex (BKC), Mumbai',
+  rideCity: 'Mumbai',
+  rideType: 'daily', // 'daily' | 'outstation' | 'rental'
+  rideVehicleType: 'auto', // 'auto' | 'auto_ev' | 'cab_mini' | 'cab_sedan' | 'cab_suv'
+  selectedRide: null,
+  rideDriver: null,
+  rideStatus: 'searching',
+  rideOtp: '4892',
+
   // Payment & Universal
   passengerList: [],
   paymentMethod: 'upi',
@@ -63,7 +74,7 @@ export const initBooking = {
   discount: 0,
   pnr: 'ST' + Math.floor(10000000 + Math.random() * 90000000),
   bookingId: 'ST-BK-' + Math.floor(100000 + Math.random() * 900000),
-  bookingType: 'bus', // 'bus' | 'train' | 'flight' | 'hotel'
+  bookingType: 'bus', // 'bus' | 'train' | 'flight' | 'hotel' | 'cab' | 'auto'
   totalAmount: 0,
 };
 

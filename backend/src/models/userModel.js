@@ -9,8 +9,18 @@ const UserModel = {
 
   findByPhone: async (phone) => {
     if (!phone) return null;
+    const trimmed = phone.trim();
+    const clean10 = trimmed.replace(/[^0-9]/g, "").slice(-10);
     return await prisma.user.findFirst({
-      where: { phone: phone.trim() },
+      where: {
+        OR: [
+          { phone: trimmed },
+          { phone: clean10 },
+          { phone: `+91${clean10}` },
+          { phone: `+91 ${clean10}` },
+          { phone: `0${clean10}` },
+        ],
+      },
     });
   },
 

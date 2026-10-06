@@ -7,13 +7,13 @@ import BottomNav from '../components/BottomNav';
 import EmptyState from '../components/EmptyState';
 import {
   ArrowLeft, Clock, CheckCircle, XCircle, MapPin,
-  Armchair, Navigation, Ticket, ChevronRight,
-  Bus, Train, Plane, Building2,
+  Navigation, Ticket,
+  Bus, Train, Plane, Building2, Car,
 } from 'lucide-react-native';
 import bookingService from '../services/bookingService';
 
 const CATEGORY_ICON = {
-  BUS: Bus, TRAIN: Train, FLIGHT: Plane, HOTEL: Building2,
+  BUS: Bus, TRAIN: Train, FLIGHT: Plane, HOTEL: Building2, CAB: Car, AUTO: Car,
 };
 
 const STATUS_CONFIG = {
@@ -78,6 +78,18 @@ function getBookingInfo(booking) {
         seats: hb?.room?.roomType || '—',
         ticketScreen: 'hotel-ticket',
         trackScreen: null,
+      };
+    }
+    case 'CAB':
+    case 'AUTO': {
+      return {
+        operator: booking.selectedRide?.name || (booking.bookingType === 'AUTO' ? 'Smart Auto' : 'Smart Cab'),
+        from: booking.ridePickup || 'Pickup Point',
+        to: booking.rideDrop || 'Drop Destination',
+        time: 'City Ride',
+        seats: `${booking.selectedRide?.seats || 3} Seats`,
+        ticketScreen: 'cab-tracking',
+        trackScreen: 'cab-tracking',
       };
     }
     default:
@@ -223,20 +235,41 @@ export default function MyTripsScreen({ onNavigate, booking, setBooking }) {
                     <Text style={styles.pnrText}>Ref: {b.bookingReference}</Text>
                   </View>
 
-                  {/* Actions */}
-                  <View style={styles.actionsRow}>
-                    {info.ticketScreen && (
-                      <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => {
-                          setBooking({ ...b });
-                          onNavigate(info.ticketScreen);
-                        }}
-                      >
-                        <Ticket size={14} color="#D13239" />
-                        <Text style={styles.actionText}>View Ticket</Text>
-                      </TouchableOpacity>
-                    )}
+                    {/* Actions */}
+                    <View style={styles.actionsRow}>
+                      {info.ticketScreen && (
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={() => {
+                            if (typeof setBooking === 'function') {
+                              const mapped = {
+                                ...b,
+                                backendBookingId: b.id,
+                                bookingId: b.bookingReference || b.id,
+                                pnr: b.bookingReference || (b.id ? 'ST' + b.id.replace(/[^0-9]/g, '').slice(-8) : 'ST9821034'),
+                                totalAmount: b.totalAmount,
+                                date: formatDate(b.travelDate),
+                                from: info.from || 'Mumbai',
+                                to: info.to || 'Pune',
+                                selectedSeats: b.passengers?.map(p => p.seatNumber).filter(Boolean) || ['7'],
+                                selectedBus: {
+                                  operator: info.operator || 'Neeta Tours',
+                                  departure: info.time || '08:00 PM',
+                                  arrival: '11:00 PM',
+                                  duration: '3h',
+                                  type: 'AC Sleeper',
+                                  price: b.totalAmount,
+                                },
+                              };
+                              setBooking(mapped);
+                            }
+                            onNavigate(info.ticketScreen);
+                          }}
+                        >
+                          <Ticket size={14} color="#D13239" />
+                          <Text style={styles.actionText}>View Ticket</Text>
+                        </TouchableOpacity>
+                      )}
                     {info.trackScreen && b.status === 'CONFIRMED' && (
                       <TouchableOpacity
                         style={styles.actionBtn}

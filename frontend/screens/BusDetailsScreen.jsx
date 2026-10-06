@@ -47,7 +47,7 @@ export default function BusDetailsScreen({ onNavigate, booking }) {
       {/* SmartBus Score Bar */}
       <View style={styles.scoreBar}>
         {[
-          { Icon: ShieldCheck, label: `${bus.score}/5`, sub: 'SmartBus Score', color: '#D13239' },
+          { Icon: ShieldCheck, label: `${bus.score}/5`, sub: 'SmartTrip Score', color: '#D13239' },
           { Icon: TrendingUp, label: `${bus.onTime}%`, sub: 'On-Time', color: '#059669' },
           { Icon: CheckCircle2, label: `${bus.bookingAccuracy}%`, sub: 'Accuracy', color: '#2563EB' },
         ].map(({ Icon, label, sub, color }) => (

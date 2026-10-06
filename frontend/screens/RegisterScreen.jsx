@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { ArrowLeft, User, Phone, Mail, Lock, Eye, EyeOff, ChevronRight, CheckSquare, Square } from 'lucide-react-native';
 import authService from '../services/authService';
 
@@ -14,7 +14,10 @@ export default function RegisterScreen({ onNavigate }) {
   const handleRegister = async () => {
     if (!form.name.trim()) return Alert.alert('Error', 'Please enter your full name');
     if (!form.mobile.trim()) return Alert.alert('Error', 'Please enter your mobile number');
+    const cleanMobile = form.mobile.replace(/[^0-9]/g, '');
+    if (cleanMobile.length < 10) return Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
     if (!form.password.trim()) return Alert.alert('Error', 'Please enter a password');
+    if (form.password.length < 8) return Alert.alert('Error', 'Password must be at least 8 characters long');
     if (form.password !== form.confirm) return Alert.alert('Error', 'Passwords do not match');
     if (!agreed) return Alert.alert('Error', 'Please agree to Terms & Conditions');
 
@@ -30,7 +33,19 @@ export default function RegisterScreen({ onNavigate }) {
         { text: 'OK', onPress: () => onNavigate('home') },
       ]);
     } catch (error) {
-      Alert.alert('Registration Failed', error.message || 'Could not create account. Please try again.');
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('already exists') || error.statusCode === 409) {
+        Alert.alert(
+          'Account Already Exists',
+          'An account with this mobile number or email is already registered. Would you like to login instead?',
+          [
+            { text: 'Login Now', onPress: () => onNavigate('login') },
+            { text: 'Cancel', style: 'cancel' },
+          ]
+        );
+      } else {
+        Alert.alert('Registration Failed', error.message || 'Could not create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -45,7 +60,10 @@ export default function RegisterScreen({ onNavigate }) {
   ];
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View style={styles.headerGradient}>
         <TouchableOpacity onPress={() => onNavigate('login')} style={styles.backBtn} activeOpacity={0.7}>
           <ArrowLeft size={18} color="#FFFFFF" />
@@ -114,7 +132,7 @@ export default function RegisterScreen({ onNavigate }) {
           </View>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

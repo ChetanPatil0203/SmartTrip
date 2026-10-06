@@ -16,6 +16,9 @@ const sharedTripRoutes = require("./sharedTripRoutes");
 const safetyRoutes = require("./safetyRoutes");
 const supportRoutes = require("./supportRoutes");
 const reviewRoutes = require("./reviewRoutes");
+const cabRoutes = require("./cabRoutes");
+const adminRoutes = require("./adminRoutes");
+const aiRoutes = require("./aiRoutes");
 const { prisma } = require("../config/db");
 
 const router = express.Router();
@@ -55,5 +58,9 @@ router.use("/shared-trips", sharedTripRoutes);
 router.use("/safety", safetyRoutes);
 router.use("/support", supportRoutes);
 router.use("/reviews", reviewRoutes);
+router.use("/cabs", cabRoutes);
+router.use("/taxi", cabRoutes);
+router.use("/admin", adminRoutes);
+router.use("/ai", aiRoutes);
 
 module.exports = router;

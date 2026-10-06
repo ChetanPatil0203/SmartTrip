@@ -280,6 +280,124 @@ async function runAllTests() {
     return `Cancellation Requested: Status ${data.data?.cancellation?.status || 'PENDING'}`;
   });
 
+  // 13. Cabs & Taxis
+  let testCabBookingId = null;
+  await test('Cabs: Search Available Rides', async () => {
+    const data = await request('/cabs/search?pickup=CSMT&drop=BKC');
+    if (!data.data?.rideOptions || data.data.rideOptions.length === 0) {
+      throw new Error('No cab ride options returned');
+    }
+    return `Found ${data.data.rideOptions.length} ride options`;
+  });
+
+  await test('Cabs: Book Cab / Auto', async () => {
+    const data = await request('/cabs/book', {
+      method: 'POST',
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      body: JSON.stringify({
+        pickupAddress: 'CSMT Station',
+        dropAddress: 'BKC Complex',
+        vehicleId: 'cab-sedan',
+      }),
+    });
+    testCabBookingId = data.data?.bookingId;
+    return `Cab Booked: Ref ${data.data?.bookingReference}, OTP: ${data.data?.rideOtp}`;
+  });
+
+  await test('Cabs: Live GPS Tracking & Stage Update', async () => {
+    if (!testCabBookingId) throw new Error('No cab booking ID to track');
+    const track = await request(`/cabs/tracking/${testCabBookingId}`);
+    await request(`/cabs/tracking/${testCabBookingId}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ stage: 2, status: 'ARRIVED' }),
+    });
+    return `Driver ${track.data?.driver?.name} tracked and updated to Arrived`;
+  });
+
+  // 12. Admin Panel APIs
+  await test('Admin: System Overview Stats', async () => {
+    const data = await request('/admin/overview');
+    if (!data.data || !data.data.systemStatus) throw new Error('Overview stats missing');
+    return `Active Users: ${data.data.activeUsers}, Revenue: ₹${data.data.totalRevenue}`;
+  });
+
+  await test('Admin: Live Vehicle Tracking Fleet', async () => {
+    const data = await request('/admin/tracking/live');
+    if (!data.data?.vehicles) throw new Error('Live vehicles missing');
+    return `Active Vehicles in fleet: ${data.data.vehicles.length}`;
+  });
+
+  await test('Admin: Broadcast Travel Delay', async () => {
+    const data = await request('/admin/tracking/delay', {
+      method: 'POST',
+      body: JSON.stringify({
+        tripId: 'TRK-BUS-101',
+        delayMinutes: 20,
+        message: 'Lonavala Ghat heavy traffic congestion',
+      }),
+    });
+    return `Broadcasted delay: +${data.data.delayMinutes} mins for ${data.data.tripId}`;
+  });
+
+  await test('Admin: Safety & SOS Reports', async () => {
+    const data = await request('/admin/safety/reports');
+    if (!data.data?.reports) throw new Error('Safety reports missing');
+    return `Total Reports: ${data.data.reports.length}, Active SOS: ${data.data.activeSosCount}`;
+  });
+
+  await test('Admin: Support Tickets & Reply', async () => {
+    const list = await request('/admin/support/tickets');
+    const ticketId = list.data?.tickets?.[0]?.id || 'TCK-5501';
+    const reply = await request(`/admin/support/tickets/${ticketId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({
+        text: 'Checking your refund status with Razorpay now.',
+        sender: 'admin',
+      }),
+    });
+    return `Replied to Ticket ${ticketId} successfully`;
+  });
+
+  // 13. SmartTrip AI Copilot APIs
+  await test('AI Copilot: Trip Itinerary Generator (Marathi)', async () => {
+    const data = await request('/ai/plan-trip', {
+      method: 'POST',
+      body: JSON.stringify({
+        origin: 'Pune',
+        destination: 'Goa',
+        days: 3,
+        budget: 12000,
+        travelType: 'Friends',
+        language: 'mr',
+      }),
+    });
+    if (!data.data?.itinerary || data.data.itinerary.length === 0) {
+      throw new Error('Itinerary generation failed');
+    }
+    return `Generated ${data.data.duration} plan for ${data.data.destination} (Budget: ₹${data.data.budgetBreakdown.total})`;
+  });
+
+  await test('AI Copilot: Support & Refund Bot (Marathi)', async () => {
+    const data = await request('/ai/support-chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: 'माझे तिकीट कॅन्सल केल्यास किती रिफंड मिळेल?',
+        language: 'mr',
+      }),
+    });
+    if (!data.data?.reply) throw new Error('AI response missing');
+    return `AI Intent: ${data.data.intent} -> Answered in Marathi`;
+  });
+
+  // 14. Auth Logout
+  await test('Auth: Logout User', async () => {
+    const data = await request('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    return data.message || 'Logout successful';
+  });
+
   // Summary
   console.log('\n============================================');
   console.log('TEST SUMMARY');
