@@ -9,6 +9,8 @@
 import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const DEV_LAN_IP = '10.40.25.170';
+
 // Automatically detect host IP (works on Web, Android Emulator, iOS Simulator, and Physical Devices over Expo LAN)
 const getHostAddress = () => {
   // 1. Web browser
@@ -23,14 +25,14 @@ const getHostAddress = () => {
       return match[1];
     }
   }
-  // 3. Android emulator loopback fallback
-  if (Platform.OS === 'android') {
-    return '10.0.2.2';
-  }
-  return 'localhost';
+  // 3. Physical phone on Expo Go / Wi-Fi fallback (uses machine Wi-Fi IP so phone connects to PC backend)
+  return DEV_LAN_IP;
 };
 
 const getBaseUrl = () => {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
   const host = getHostAddress();
   return `http://${host}:5000/api`;
 };
@@ -106,9 +108,9 @@ export const getUser = async () => {
 };
 
 // -------------------------------------------------------
-// Core fetch wrapper with 10s Timeout and Exponential Retry
+// Core fetch wrapper with 4.5s Timeout and Fast Retry
 // -------------------------------------------------------
-const TIMEOUT_MS = 10000;
+const TIMEOUT_MS = 4500;
 
 const fetchWithTimeout = async (url, options, timeout = TIMEOUT_MS) => {
   const controller = new AbortController();
@@ -131,7 +133,7 @@ const fetchWithTimeout = async (url, options, timeout = TIMEOUT_MS) => {
   }
 };
 
-const request = async (method, endpoint, body = null, requiresAuth = false, retries = 2) => {
+const request = async (method, endpoint, body = null, requiresAuth = false, retries = 1) => {
   const headers = { 'Content-Type': 'application/json' };
 
   if (requiresAuth) {

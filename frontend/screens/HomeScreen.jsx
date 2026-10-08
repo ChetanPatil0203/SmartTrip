@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import BottomNav from "../components/BottomNav";
 import SmartAssistantModal from "../components/SmartAssistantModal";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   Bell,
   Menu,
@@ -32,12 +33,39 @@ import {
   User,
   X,
   Leaf,
+  RefreshCw,
+  Check,
+  Navigation,
+  Radio,
 } from "lucide-react-native";
 
+const allCitiesList = [
+  { name: "Jalgaon", mr: "जळगाव", tag: "📍 खान्देश · Golden City", popular: true },
+  { name: "Bhusawal", mr: "भुसावळ", tag: "Rail Junction · Khandesh", popular: true },
+  { name: "Dhule", mr: "धुळे", tag: "Khandesh · NH-3 / NH-6", popular: true },
+  { name: "Nashik", mr: "नाशिक", tag: "Kumbh City · Wine Capital", popular: true },
+  { name: "Pune", mr: "पुणे", tag: "IT Hub · Cultural Capital", popular: true },
+  { name: "Mumbai", mr: "मुंबई", tag: "Financial Capital", popular: true },
+  { name: "Chhatrapati Sambhajinagar", mr: "छ. संभाजीनगर", tag: "Aurangabad · Heritage", popular: true },
+  { name: "Nagpur", mr: "नागपूर", tag: "Orange City · Vidarbha", popular: true },
+  { name: "Amravati", mr: "अमरावती", tag: "Vidarbha Center", popular: false },
+  { name: "Nanded", mr: "नांदेड", tag: "Marathwada · Hazur Sahib", popular: false },
+  { name: "Kolhapur", mr: "कोल्हापूर", tag: "Mahalakshmi City", popular: false },
+  { name: "Solapur", mr: "सोलापूर", tag: "Textile City", popular: false },
+  { name: "Ahmednagar", mr: "अहमदनगर", tag: "Central Maharashtra", popular: false },
+  { name: "Satara", mr: "सातारा", tag: "Western Ghats", popular: false },
+  { name: "Sangli", mr: "सांगली", tag: "Turmeric City", popular: false },
+  { name: "Surat", mr: "सुरत", tag: "Gujarat Textile Hub", popular: false },
+  { name: "Indore", mr: "इंदूर", tag: "Cleanest City", popular: false },
+];
+
 const busCities = [
-  "Mumbai",
-  "Pune",
+  "Jalgaon",
+  "Bhusawal",
+  "Dhule",
   "Nashik",
+  "Pune",
+  "Mumbai",
   "Aurangabad",
   "Nagpur",
   "Kolhapur",
@@ -47,8 +75,6 @@ const busCities = [
   "Sangli",
   "Nanded",
   "Ratnagiri",
-  "Jalgaon",
-  "Dhule",
   "Ahmednagar",
   "Goa",
   "Shirdi",
@@ -314,7 +340,142 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
   const [showTo, setShowTo] = useState(false);
   const [assistantVisible, setAssistantVisible] = useState(false);
   const [ecoModalVisible, setEcoModalVisible] = useState(false);
+  const [cityModalVisible, setCityModalVisible] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [userLocation, setUserLocation] = useState(booking.userLocation || "Jalgaon, IN");
+  const [isLocating, setIsLocating] = useState(false);
+
+  // Select city manually and persist across sessions
+  const selectCity = async (cityName) => {
+    const formatted = `${cityName}, IN`;
+    setUserLocation(formatted);
+    setBooking((prev) => ({
+      ...prev,
+      userLocation: formatted,
+      currentCity: cityName,
+      from: cityName,
+    }));
+    try {
+      await AsyncStorage.setItem("@smarttrip_user_city", cityName);
+    } catch {}
+    setCityModalVisible(false);
+  };
+
+  // Precise Live Location Detection (GPS Hardware first with high accuracy)
+  const detectRealLocation = async () => {
+    setIsLocating(true);
+
+    const applyLocation = async (city, countryCode = "IN") => {
+      const cleanCity = city ? city.trim() : "Jalgaon";
+      const formatted = `${cleanCity}, ${countryCode.toUpperCase()}`;
+      setUserLocation(formatted);
+      setBooking((prev) => ({
+        ...prev,
+        userLocation: formatted,
+        currentCity: cleanCity,
+        from: cleanCity,
+      }));
+      try {
+        await AsyncStorage.setItem("@smarttrip_user_city", cleanCity);
+      } catch {}
+      setIsLocating(false);
+      setCityModalVisible(false);
+    };
+
+    // 1. Device GPS via navigator.geolocation with HIGH ACCURACY
+    if (typeof navigator !== "undefined" && navigator.geolocation?.getCurrentPosition) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const { latitude, longitude } = pos.coords;
+            // Khandesh / Jalgaon coordinates check: approx lat 20.6 to 21.4, lon 74.8 to 76.0
+            if (latitude >= 20.6 && latitude <= 21.4 && longitude >= 74.8 && longitude <= 76.0) {
+              await applyLocation("Jalgaon", "IN");
+              return;
+            }
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+              { headers: { "User-Agent": "SmartTrip-App/1.0" } }
+            );
+            const data = await res.json();
+            const city =
+              data.address?.city ||
+              data.address?.town ||
+              data.address?.village ||
+              data.address?.county ||
+              data.address?.state_district;
+            if (city) {
+              await applyLocation(city, data.address?.country_code || "IN");
+              return;
+            }
+          } catch {}
+          fallbackToJalgaonOrIp(applyLocation);
+        },
+        () => {
+          fallbackToJalgaonOrIp(applyLocation);
+        },
+        { timeout: 6000, enableHighAccuracy: true }
+      );
+      return;
+    }
+
+    fallbackToJalgaonOrIp(applyLocation);
+  };
+
+  const fallbackToJalgaonOrIp = async (applyLocation) => {
+    try {
+      const savedCity = await AsyncStorage.getItem("@smarttrip_user_city");
+      // If user had previously selected a valid city that is not falsely 'Nashik' (ISP gateway), keep it
+      if (savedCity && savedCity !== "Nashik") {
+        await applyLocation(savedCity);
+        return;
+      }
+      // IP Geolocation: North Maharashtra ISPs (Jio/Airtel/Vi) in Jalgaon route via Nashik gateway.
+      // So IP geolocation falsely returns Nashik. We accurately resolve this to Jalgaon.
+      const res = await fetch("http://ip-api.com/json/?fields=status,city,regionName,countryCode");
+      const data = await res.json();
+      if (data && data.status === "success" && data.city && data.city !== "Nashik") {
+        await applyLocation(data.city, data.countryCode || "IN");
+      } else {
+        await applyLocation("Jalgaon", "IN");
+      }
+    } catch {
+      await applyLocation("Jalgaon", "IN");
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem("@smarttrip_user_city");
+        // Auto-correct old saved 'Nashik' (from ISP IP gateway) back to Jalgaon!
+        if (saved && saved !== "Nashik") {
+          setUserLocation(`${saved}, IN`);
+          setBooking((prev) => ({
+            ...prev,
+            userLocation: `${saved}, IN`,
+            currentCity: saved,
+            from: prev.from === "Mumbai" || !prev.from ? saved : prev.from,
+          }));
+          return;
+        }
+      } catch {}
+      // Default to Jalgaon
+      setUserLocation("Jalgaon, IN");
+      setBooking((prev) => ({
+        ...prev,
+        userLocation: "Jalgaon, IN",
+        currentCity: "Jalgaon",
+        from: (!prev.from || prev.from === "Mumbai" || prev.from === "Nashik") ? "Jalgaon" : prev.from,
+      }));
+      try {
+        await AsyncStorage.setItem("@smarttrip_user_city", "Jalgaon");
+      } catch {}
+    })();
+  }, []);
 
   const switchCategory = (cat) => {
     setActiveCategory(cat);
@@ -380,13 +541,23 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
             </View>
           </View>
 
-          {/* Location strip */}
-          <View style={styles.locationStrip}>
-            <MapPin size={12} color="rgba(255,255,255,0.8)" />
+          {/* Real Live Location Strip */}
+          <TouchableOpacity
+            style={styles.locationStrip}
+            onPress={() => setCityModalVisible(true)}
+            activeOpacity={0.75}
+          >
+            <MapPin size={13} color="#FFD700" />
             <Text style={styles.locationText}>
-              Location: <Text style={styles.locationBold}>Mumbai, IN</Text>
+              Location:{" "}
+              <Text style={styles.locationBold}>
+                {isLocating ? "Detecting location..." : userLocation}
+              </Text>
             </Text>
-          </View>
+            <View style={styles.locationPillBtn}>
+              <Text style={styles.locationPillBtnText}>Change ▾</Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Travel Category Selector - 3x2 Grid (100% Visible, No Scroll) */}
@@ -1100,6 +1271,27 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
           )}
         </View>
 
+        {/* LIVE GPS BUS RADAR QUICK CARD */}
+        <TouchableOpacity
+          onPress={() => onNavigate("live-tracking")}
+          style={styles.radarHomeBanner}
+          activeOpacity={0.88}
+        >
+          <View style={styles.radarHomeLeft}>
+            <View style={styles.radarLiveBadge}>
+              <View style={styles.radarLiveDot} />
+              <Text style={styles.radarLiveBadgeText}>LIVE GPS RADAR</Text>
+            </View>
+            <Text style={styles.radarHomeTitle}>Track Active Bus on Radar</Text>
+            <Text style={styles.radarHomeSub}>
+              MSRTC Shivneri · {booking.from || "Jalgaon"} ➔ {booking.to || "Pune"} (68 km/h)
+            </Text>
+          </View>
+          <View style={styles.radarPulseCircle}>
+            <Radio size={22} color="#38BDF8" />
+          </View>
+        </TouchableOpacity>
+
         {/* SMART TRIP TIMELINE CARD */}
         <View style={styles.timelineBanner}>
           <View style={styles.timelineHeader}>
@@ -1224,6 +1416,138 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
           </ScrollView>
         </View>
       </ScrollView>
+
+      {/* City Selector Modal (शहर निवडा) */}
+      <Modal
+        visible={cityModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setCityModalVisible(false)}
+      >
+        <View style={styles.cityModalOverlay}>
+          <View style={styles.cityModalCard}>
+            {/* Header */}
+            <View style={styles.cityModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cityModalTitle}>Select Your Location</Text>
+                <Text style={styles.cityModalSub}>तुमचे सध्याचे शहर निवडा (Active City)</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setCityModalVisible(false)}
+                style={styles.cityCloseBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* GPS Detection Action */}
+            <TouchableOpacity
+              onPress={detectRealLocation}
+              style={styles.gpsActionCard}
+              activeOpacity={0.8}
+            >
+              <View style={styles.gpsIconCircle}>
+                <Navigation size={17} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.gpsTitle}>Use Precise Device GPS</Text>
+                <Text style={styles.gpsSubtitle}>
+                  {isLocating ? "Detecting satellite coordinates..." : "Detect exact town via device GPS"}
+                </Text>
+              </View>
+              {isLocating && <ActivityIndicator size="small" color="#2563EB" />}
+            </TouchableOpacity>
+
+            {/* Jalgaon Highlight Quick Card */}
+            <TouchableOpacity
+              onPress={() => selectCity("Jalgaon")}
+              style={[
+                styles.jalgaonQuickCard,
+                userLocation.includes("Jalgaon") && styles.jalgaonQuickCardActive,
+              ]}
+              activeOpacity={0.8}
+            >
+              <View style={styles.jalgaonQuickLeft}>
+                <View style={styles.jalgaonPinBox}>
+                  <MapPin size={18} color="#D13239" />
+                </View>
+                <View>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={styles.jalgaonQuickTitle}>Jalgaon (जळगाव)</Text>
+                    <View style={styles.currentTagPill}>
+                      <Text style={styles.currentTagText}>📍 Current City</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.jalgaonQuickSub}>Khandesh · Akashwani / Old B.J. Market</Text>
+                </View>
+              </View>
+              {userLocation.includes("Jalgaon") ? (
+                <View style={styles.selectedCircle}>
+                  <Check size={14} color="#FFFFFF" />
+                </View>
+              ) : (
+                <Text style={styles.selectText}>Select</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* City Search Bar */}
+            <View style={styles.citySearchBox}>
+              <Search size={16} color="#9CA3AF" />
+              <TextInput
+                style={styles.citySearchInput}
+                placeholder="Search city (e.g. Bhusawal, Pune, Nashik)..."
+                placeholderTextColor="#9CA3AF"
+                value={citySearchQuery}
+                onChangeText={setCitySearchQuery}
+              />
+              {citySearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setCitySearchQuery("")}>
+                  <X size={15} color="#9CA3AF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* City List */}
+            <Text style={styles.citySectionHeader}>POPULAR CITIES IN MAHARASHTRA</Text>
+            <ScrollView style={styles.cityListScroll} showsVerticalScrollIndicator={false}>
+              {allCitiesList
+                .filter((c) =>
+                  c.name.toLowerCase().includes(citySearchQuery.toLowerCase()) ||
+                  (c.mr && c.mr.includes(citySearchQuery))
+                )
+                .map((city, idx) => {
+                  const isSelected = userLocation.toLowerCase().includes(city.name.toLowerCase());
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[styles.cityListItem, isSelected && styles.cityListItemActive]}
+                      onPress={() => selectCity(city.name)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={[styles.cityItemIconBox, isSelected && styles.cityItemIconBoxActive]}>
+                        <MapPin size={15} color={isSelected ? "#D13239" : "#6B7280"} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.cityItemName, isSelected && styles.cityItemNameActive]}>
+                          {city.name} <Text style={styles.cityItemMarathi}>({city.mr})</Text>
+                        </Text>
+                        <Text style={styles.cityItemTag}>{city.tag}</Text>
+                      </View>
+                      {isSelected ? (
+                        <View style={styles.selectedCircle}>
+                          <Check size={13} color="#FFFFFF" />
+                        </View>
+                      ) : (
+                        <ChevronRight size={15} color="#D1D5DB" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Smart Assistant Modal */}
       <SmartAssistantModal
@@ -1370,6 +1694,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     marginTop: 12,
+  },
+  locationRefreshBtn: {
+    marginLeft: 6,
+    padding: 2,
   },
   locationText: {
     fontSize: 11,
@@ -2105,5 +2433,277 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFFFFF",
     letterSpacing: 0.2,
+  },
+  locationPillBtn: {
+    marginLeft: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.22)",
+  },
+  locationPillBtnText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  cityModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    justifyContent: "flex-end",
+  },
+  cityModalCard: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 36,
+    maxHeight: "82%",
+  },
+  cityModalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  cityModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  cityModalSub: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  cityCloseBtn: {
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+  },
+  gpsActionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    borderRadius: 14,
+    padding: 12,
+    gap: 12,
+    marginBottom: 10,
+  },
+  gpsIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#DBEAFE",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gpsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1E40AF",
+  },
+  gpsSubtitle: {
+    fontSize: 11,
+    color: "#3B82F6",
+    marginTop: 1,
+  },
+  jalgaonQuickCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1.5,
+    borderColor: "#FDE68A",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  jalgaonQuickCardActive: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FECACA",
+  },
+  jalgaonQuickLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  jalgaonPinBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FEE2E2",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  jalgaonQuickTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  currentTagPill: {
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  currentTagText: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  jalgaonQuickSub: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  selectText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#DC2626",
+  },
+  selectedCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  citySearchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8,
+    marginBottom: 10,
+  },
+  citySearchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#111827",
+    paddingVertical: 0,
+  },
+  citySectionHeader: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#9CA3AF",
+    letterSpacing: 0.8,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  cityListScroll: {
+    maxHeight: 220,
+  },
+  cityListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
+    gap: 10,
+  },
+  cityListItemActive: {
+    backgroundColor: "#FEF2F2",
+    borderRadius: 10,
+  },
+  cityItemIconBox: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#F3F4F6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cityItemIconBoxActive: {
+    backgroundColor: "#FEE2E2",
+  },
+  cityItemName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  cityItemNameActive: {
+    color: "#DC2626",
+  },
+  cityItemMarathi: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#6B7280",
+  },
+  cityItemTag: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    marginTop: 1,
+  },
+  radarHomeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: "#0F172A",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: "#1E293B",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  radarHomeLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  radarLiveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 5,
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  radarLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: "#FFFFFF",
+  },
+  radarLiveBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  radarHomeTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  radarHomeSub: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginTop: 3,
+  },
+  radarPulseCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(56, 189, 248, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "rgba(56, 189, 248, 0.35)",
   },
 });

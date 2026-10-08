@@ -13,4 +13,8 @@ module.exports = {
   paymentKeyId: process.env.PAYMENT_KEY_ID || "",
   paymentKeySecret: process.env.PAYMENT_KEY_SECRET || "",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || "",
+  emailService: process.env.EMAIL_SERVICE || "gmail",
+  emailUser: process.env.EMAIL_USER || "",
+  emailPass: process.env.EMAIL_PASS || "",
+  emailFrom: process.env.EMAIL_FROM || "",
 };

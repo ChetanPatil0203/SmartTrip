@@ -45,8 +45,31 @@ const authService = {
     return await api.patch('/users/password', { currentPassword, newPassword }, true);
   },
 
+  // POST /api/auth/send-otp (Powered by Firebase Cloud Messaging - FCM)
+  sendOtp: async ({ phone, email, purpose = 'login', deviceToken = null }) => {
+    return await api.post('/auth/send-otp', { phone, email, purpose, deviceToken }, false);
+  },
+
+  // POST /api/auth/verify-otp (Authenticates user with signed JWT token)
+  verifyOtp: async ({ phone, email, otp, newPassword }) => {
+    const res = await api.post('/auth/verify-otp', { phone, email, otp, newPassword }, false);
+    if (res?.data?.token) {
+      await setToken(res.data.token);
+      await setUser(res.data.user);
+    }
+    return res;
+  },
+
+  // POST /api/auth/reset-password
+  resetPassword: async ({ phone, email, otp, newPassword, confirmPassword }) => {
+    return await api.post('/auth/reset-password', { phone, email, otp, newPassword, confirmPassword }, false);
+  },
+
   getToken,
   getUser,
 };
 
+
+
 export default authService;
+

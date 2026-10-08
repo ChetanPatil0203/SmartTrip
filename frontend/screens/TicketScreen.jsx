@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,12 @@ import {
   Share,
   Alert,
   Image,
+  Linking,
+  Modal,
+  TextInput,
+  Animated,
+  Easing,
+  Vibration,
 } from "react-native";
 import {
   ArrowLeft,
@@ -26,6 +32,11 @@ import {
   FileText,
   Sparkles,
   Copy,
+  X,
+  Send,
+  Check,
+  Radio,
+  ExternalLink,
 } from "lucide-react-native";
 
 export default function TicketScreen({ onNavigate, booking = {} }) {
@@ -56,10 +67,87 @@ export default function TicketScreen({ onNavigate, booking = {} }) {
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [qrImageError, setQrImageError] = useState(false);
+  const [conductorModalVisible, setConductorModalVisible] = useState(false);
+  const [waModalVisible, setWaModalVisible] = useState(false);
+  const [waPhoneNumber, setWaPhoneNumber] = useState("");
+  const [isBoardedVerified, setIsBoardedVerified] = useState(false);
+  const [liveClockStr, setLiveClockStr] = useState(new Date().toLocaleTimeString("en-IN"));
+
+  // Animated laser line for Conductor QR Scanner
+  const laserAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Laser sweep up and down
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(laserAnim, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(laserAnim, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Ticking seconds clock for anti-screenshot watermark
+    const timer = setInterval(() => {
+      setLiveClockStr(new Date().toLocaleTimeString("en-IN", { hour12: true }));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [laserAnim]);
+
+  const laserTranslateY = laserAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [10, 200],
+  });
+
+  // Formatted WhatsApp Ticket Content
+  const waShareMessage =
+    `*SMARTTRIP OFFICIAL E-TICKET* 🎫\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `📌 *PNR:* ${pnr}\n` +
+    `🆔 *Booking ID:* ${bookingId}\n` +
+    `✅ *Status:* CONFIRMED (Seats Locked)\n\n` +
+    `🚌 *Bus:* ${operatorName}\n` +
+    `💺 *Seat(s):* ${seatListStr}\n` +
+    `📍 *Route:* ${fromCity} ➔ ${toCity}\n` +
+    `📅 *Travel Date:* ${travelDate}\n` +
+    `⏰ *Departure:* ${departureTime} | *Arrival:* ${arrivalTime}\n\n` +
+    `📍 *Boarding Station:* ${boardingPoint}\n` +
+    `🏁 *Dropping Point:* ${droppingPoint}\n` +
+    `💰 *Total Paid:* ₹${total.toLocaleString()} (Verified UPI)\n\n` +
+    `📡 *Live GPS Radar Link:* \nhttps://smarttrip.in/radar/${pnr}\n\n` +
+    `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+    `_Please show this verified WhatsApp ticket or QR code to the conductor upon boarding._\n` +
+    `📞 *24x7 Passenger Helpline:* +91 98220 12345`;
+
+  // Send directly to WhatsApp
+  const handleSendToWhatsApp = async (customPhone = "") => {
+    const cleanPhone = customPhone ? customPhone.replace(/[^0-9]/g, "") : "";
+    const encoded = encodeURIComponent(waShareMessage);
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone.startsWith("91") ? cleanPhone : "91" + cleanPhone}?text=${encoded}`
+      : `https://wa.me/?text=${encoded}`;
+
+    try {
+      await Linking.openURL(url);
+      setWaModalVisible(false);
+    } catch {
+      await Share.share({ title: `SmartTrip Ticket - ${pnr}`, message: waShareMessage });
+      setWaModalVisible(false);
+    }
+  };
 
   // Encode structured payload for QR scanner
-  const qrData = `SMARTTRIP|PNR:${pnr}|BID:${bookingId}|FROM:${fromCity}|TO:${toCity}|DATE:${travelDate}|SEATS:${seatListStr}|PAID:${total}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(qrData)}`;
+  const qrData = `SMARTTRIP|PNR:${pnr}|BID:${bookingId}|FROM:${fromCity}|TO:${toCity}|DATE:${travelDate}|SEATS:${seatListStr}|PAID:${total}|VALID:${liveClockStr}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&margin=10&data=${encodeURIComponent(qrData)}`;
 
   // Handle Share Ticket
   const handleShare = async () => {
@@ -290,14 +378,49 @@ export default function TicketScreen({ onNavigate, booking = {} }) {
               </View>
             </View>
 
+            {/* WhatsApp E-Ticket Direct Action Card */}
+            <TouchableOpacity
+              onPress={() => setWaModalVisible(true)}
+              style={styles.whatsappCard}
+              activeOpacity={0.85}
+            >
+              <View style={styles.whatsappLeft}>
+                <View style={styles.whatsappIconCircle}>
+                  <Text style={{ fontSize: 20 }}>💬</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={styles.whatsappTitle}>Send E-Ticket on WhatsApp</Text>
+                    <View style={styles.instantPill}>
+                      <Text style={styles.instantPillText}>INSTANT</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.whatsappSub}>
+                    Get confirmed ticket + boarding map + live GPS link
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.whatsappActionBtn}>
+                <Text style={styles.whatsappActionText}>Share ➔</Text>
+              </View>
+            </TouchableOpacity>
+
             {/* Real Dynamic QR Code Scanner Section */}
-            <View style={styles.qrCol}>
+            <TouchableOpacity
+              style={styles.qrCol}
+              onPress={() => setConductorModalVisible(true)}
+              activeOpacity={0.88}
+            >
               <View style={styles.qrLabelRow}>
                 <QrCode size={14} color="#0F172A" />
                 <Text style={styles.qrTitle}>Official Digital Verification QR</Text>
+                <View style={styles.enlargeBadge}>
+                  <Sparkles size={11} color="#D13239" />
+                  <Text style={styles.enlargeBadgeText}>Enlarge</Text>
+                </View>
               </View>
               <Text style={styles.qrSub}>
-                Conductor / Inspector will scan this barcode during boarding
+                Tap to open Conductor Fullscreen Scanner View
               </Text>
 
               {/* QR Container Frame with Scanner Corners */}
@@ -348,9 +471,9 @@ export default function TicketScreen({ onNavigate, booking = {} }) {
 
               <View style={styles.verifyPill}>
                 <ShieldCheck size={12} color="#16A34A" />
-                <Text style={styles.verifyPillText}>Secure Anti-Counterfeit Token: {pnr.slice(-6)}</Text>
+                <Text style={styles.verifyPillText}>Secure Anti-Counterfeit Token: {pnr.slice(-6)} · Tap to scan</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Important Instructions Card */}
             <View style={styles.noticeBox}>
@@ -370,23 +493,23 @@ export default function TicketScreen({ onNavigate, booking = {} }) {
       <View style={styles.footer}>
         <View style={styles.footerInner}>
           <TouchableOpacity
+            onPress={() => handleSendToWhatsApp()}
+            style={styles.whatsappFooterBtn}
+            activeOpacity={0.85}
+          >
+            <Text style={{ fontSize: 16 }}>💬</Text>
+            <Text style={styles.whatsappFooterBtnText}>WhatsApp</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={handleDownload}
             style={styles.downloadBtn}
             activeOpacity={0.7}
           >
-            <Download size={16} color="#D13239" />
+            <Download size={15} color="#D13239" />
             <Text style={styles.downloadBtnText}>
-              {downloadSuccess ? "Downloaded ✓" : "Download PDF"}
+              {downloadSuccess ? "Saved ✓" : "Download"}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleShare}
-            style={styles.shareBtn}
-            activeOpacity={0.8}
-          >
-            <Share2 size={16} color="#1E293B" />
-            <Text style={styles.shareBtnText}>Share</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -394,11 +517,166 @@ export default function TicketScreen({ onNavigate, booking = {} }) {
             style={styles.trackBtn}
             activeOpacity={0.8}
           >
-            <Navigation size={16} color="#FFFFFF" />
-            <Text style={styles.trackBtnText}>Live Track</Text>
+            <Radio size={15} color="#FFFFFF" />
+            <Text style={styles.trackBtnText}>Live Radar</Text>
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* 1. Conductor Fullscreen QR Scanner Modal */}
+      <Modal
+        visible={conductorModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setConductorModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.conductorModalCard}>
+            {/* Header */}
+            <View style={styles.conductorHeader}>
+              <View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <ShieldCheck size={18} color="#16A34A" />
+                  <Text style={styles.conductorTitle}>CONDUCTOR VERIFICATION</Text>
+                </View>
+                <Text style={styles.conductorSub}>Official SmartTrip Boarding Pass</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setConductorModalVisible(false)}
+                style={styles.conductorCloseBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* QR Viewport with Animated Laser Line */}
+            <View style={styles.conductorQrViewport}>
+              <Image
+                source={{ uri: qrUrl }}
+                style={styles.conductorQrImage}
+                resizeMode="contain"
+              />
+
+              {/* Animated Red Laser Scanning Line */}
+              <Animated.View
+                style={[
+                  styles.scannerLaserLine,
+                  { transform: [{ translateY: laserTranslateY }] },
+                ]}
+              />
+            </View>
+
+            {/* Anti-Counterfeit Dynamic Watermark */}
+            <View style={styles.antiTamperBadge}>
+              <View style={styles.liveClockDot} />
+              <Text style={styles.antiTamperText}>
+                VALIDATED · {liveClockStr} · TOKEN #{pnr.slice(-6)}
+              </Text>
+            </View>
+
+            {/* Trip Summary Grid */}
+            <View style={styles.conductorTripDetails}>
+              <View style={styles.conductorDetailCol}>
+                <Text style={styles.conductorLabel}>PASSENGER SEATS</Text>
+                <Text style={styles.conductorValHighlight}>{seatListStr}</Text>
+              </View>
+              <View style={styles.conductorDetailCol}>
+                <Text style={styles.conductorLabel}>ROUTE</Text>
+                <Text style={styles.conductorVal}>{fromCity} ➔ {toCity}</Text>
+              </View>
+            </View>
+
+            {/* Conductor Boarding Action Button */}
+            <TouchableOpacity
+              onPress={() => {
+                try {
+                  Vibration.vibrate([200, 100, 200]);
+                } catch {}
+                setIsBoardedVerified(true);
+              }}
+              style={[
+                styles.conductorVerifyBtn,
+                isBoardedVerified && styles.conductorVerifyBtnDone,
+              ]}
+              activeOpacity={0.8}
+            >
+              {isBoardedVerified ? (
+                <>
+                  <CheckCircle size={18} color="#FFFFFF" />
+                  <Text style={styles.conductorVerifyBtnText}>PASSENGER BOARDED ✓</Text>
+                </>
+              ) : (
+                <>
+                  <Check size={18} color="#FFFFFF" />
+                  <Text style={styles.conductorVerifyBtnText}>VERIFY & BOARD PASSENGER</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2. Send to WhatsApp Modal */}
+      <Modal
+        visible={waModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setWaModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.waModalCard}>
+            <View style={styles.conductorHeader}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={{ fontSize: 24 }}>💬</Text>
+                <View>
+                  <Text style={styles.waModalTitle}>Send Ticket on WhatsApp</Text>
+                  <Text style={styles.waModalSub}>Instant digital ticket with GPS radar link</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setWaModalVisible(false)} style={styles.conductorCloseBtn}>
+                <X size={18} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Phone Input Box */}
+            <View style={styles.waInputBox}>
+              <Text style={styles.waInputPrefix}>+91</Text>
+              <TextInput
+                style={styles.waTextInput}
+                placeholder="Enter 10-digit mobile number (Optional)"
+                placeholderTextColor="#94A3B8"
+                keyboardType="phone-pad"
+                value={waPhoneNumber}
+                onChangeText={setWaPhoneNumber}
+                maxLength={10}
+              />
+            </View>
+
+            {/* Quick Share Buttons */}
+            <View style={{ gap: 10, marginTop: 12 }}>
+              <TouchableOpacity
+                onPress={() => handleSendToWhatsApp(waPhoneNumber)}
+                style={styles.waSendBtn}
+                activeOpacity={0.85}
+              >
+                <Send size={16} color="#FFFFFF" />
+                <Text style={styles.waSendBtnText}>
+                  {waPhoneNumber ? `Send to +91 ${waPhoneNumber}` : "Open WhatsApp Directly"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleSendToWhatsApp()}
+                style={styles.waShareDirectBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.waShareDirectBtnText}>Share to Recent WhatsApp Chats</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -898,7 +1176,7 @@ const styles = StyleSheet.create({
     flex: 1.2,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: "#D13239",
+    backgroundColor: "#0F172A",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -909,5 +1187,295 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 13,
     fontWeight: "800",
+  },
+  whatsappFooterBtn: {
+    flex: 1.2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#15803D",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    elevation: 2,
+  },
+  whatsappFooterBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  whatsappCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1.5,
+    borderColor: "#86EFAC",
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 16,
+    marginTop: 14,
+  },
+  whatsappLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  whatsappIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#DCFCE7",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  whatsappTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#166534",
+  },
+  instantPill: {
+    backgroundColor: "#16A34A",
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  instantPillText: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#FFFFFF",
+  },
+  whatsappSub: {
+    fontSize: 11,
+    color: "#15803D",
+    marginTop: 2,
+  },
+  whatsappActionBtn: {
+    backgroundColor: "#16A34A",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  whatsappActionText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  enlargeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#FFF1F2",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  enlargeBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#D13239",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  conductorModalCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+    alignItems: "center",
+  },
+  conductorHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 14,
+  },
+  conductorTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: 0.5,
+  },
+  conductorSub: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  conductorCloseBtn: {
+    padding: 6,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+  },
+  conductorQrViewport: {
+    width: 240,
+    height: 240,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#0F172A",
+    padding: 10,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    overflow: "hidden",
+  },
+  conductorQrImage: {
+    width: 210,
+    height: 210,
+  },
+  scannerLaserLine: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    height: 3,
+    backgroundColor: "#EF4444",
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  antiTamperBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  liveClockDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#16A34A",
+  },
+  antiTamperText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#475569",
+    letterSpacing: 0.4,
+  },
+  conductorTripDetails: {
+    flexDirection: "row",
+    width: "100%",
+    marginTop: 14,
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  conductorDetailCol: {
+    flex: 1,
+  },
+  conductorLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#64748B",
+  },
+  conductorValHighlight: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#D13239",
+    marginTop: 2,
+  },
+  conductorVal: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 2,
+  },
+  conductorVerifyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#0F172A",
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 16,
+  },
+  conductorVerifyBtnDone: {
+    backgroundColor: "#16A34A",
+  },
+  conductorVerifyBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    letterSpacing: 0.3,
+  },
+  waModalCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+  },
+  waModalTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  waModalSub: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  waInputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 46,
+    marginTop: 14,
+  },
+  waInputPrefix: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#334155",
+    marginRight: 8,
+  },
+  waTextInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0F172A",
+    paddingVertical: 0,
+  },
+  waSendBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#16A34A",
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  waSendBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  waShareDirectBtn: {
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  waShareDirectBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
   },
 });

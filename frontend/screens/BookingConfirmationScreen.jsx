@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from "react-native";
-import { CheckCircle2, Download, Share2, Ticket, QrCode, ArrowRight } from "lucide-react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated, Linking } from "react-native";
+import { CheckCircle2, Download, Share2, Ticket, QrCode, ArrowRight, Radio } from "lucide-react-native";
 
 export default function BookingConfirmationScreen({ onNavigate, booking = {} }) {
   const scaleAnim = useRef(new Animated.Value(0.3)).current;
@@ -29,6 +29,29 @@ export default function BookingConfirmationScreen({ onNavigate, booking = {} }) 
     (currentBooking.selectedBus?.price ?? 750) * seats + 40 - (currentBooking.discount || 0);
   const pnr = currentBooking.pnr || "ST" + Math.floor(10000000 + Math.random() * 90000000);
   const bookingId = currentBooking.bookingId || "ST-BK-948201";
+
+  const handleSendWhatsApp = () => {
+    const fromCity = currentBooking.from || "Jalgaon";
+    const toCity = currentBooking.to || "Pune";
+    const busName = currentBooking.selectedBus?.operator || "MSRTC Shivneri";
+    const seatStr = (currentBooking.selectedSeats || ["7", "8"]).join(", ");
+
+    const shareText =
+      `*SMARTTRIP OFFICIAL E-TICKET* 🎫\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📌 *PNR:* ${pnr}\n` +
+      `🆔 *Booking ID:* ${bookingId}\n` +
+      `✅ *Status:* CONFIRMED\n\n` +
+      `🚌 *Bus:* ${busName}\n` +
+      `📍 *Route:* ${fromCity} ➔ ${toCity}\n` +
+      `📅 *Date:* ${currentBooking.date || "Tomorrow"}\n` +
+      `💺 *Seats:* ${seatStr}\n` +
+      `💰 *Total Paid:* ₹${total.toLocaleString()}\n\n` +
+      `📡 *Live GPS Radar Link:* \nhttps://smarttrip.in/radar/${pnr}`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+    Linking.openURL(url).catch(() => {});
+  };
 
   const Row = ({ label, value }) => (
     <View style={styles.detailRow}>
@@ -139,20 +162,30 @@ export default function BookingConfirmationScreen({ onNavigate, booking = {} }) 
       {/* Fixed Action Footer */}
       <View style={styles.footer}>
         <View style={styles.actionBtnsRow}>
-          <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.7}>
-            <Download size={15} color="#D13239" />
-            <Text style={styles.outlineBtnText}>Download</Text>
+          <TouchableOpacity
+            onPress={handleSendWhatsApp}
+            style={[styles.outlineBtn, { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" }]}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 14 }}>💬</Text>
+            <Text style={[styles.outlineBtnText, { color: "#166534" }]}>WhatsApp</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.outlineBtn} activeOpacity={0.7}>
-            <Share2 size={15} color="#D13239" />
-            <Text style={styles.outlineBtnText}>Share</Text>
+
+          <TouchableOpacity
+            onPress={() => onNavigate("live-tracking")}
+            style={[styles.outlineBtn, { backgroundColor: "#0F172A", borderColor: "#0F172A" }]}
+            activeOpacity={0.8}
+          >
+            <Radio size={14} color="#38BDF8" />
+            <Text style={[styles.outlineBtnText, { color: "#FFFFFF" }]}>Live Radar</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => onNavigate("ticket")}
             style={[styles.outlineBtn, { backgroundColor: "#FFF5F5" }]}
             activeOpacity={0.7}
           >
-            <Ticket size={15} color="#D13239" />
+            <Ticket size={14} color="#D13239" />
             <Text style={styles.outlineBtnText}>View Ticket</Text>
           </TouchableOpacity>
         </View>

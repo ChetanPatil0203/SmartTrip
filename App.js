@@ -9,6 +9,7 @@ import OnboardingScreen from './frontend/screens/OnboardingScreen';
 import LoginScreen from './frontend/screens/LoginScreen';
 import RegisterScreen from './frontend/screens/RegisterScreen';
 import OTPScreen from './frontend/screens/OTPScreen';
+import ForgotPasswordScreen from './frontend/screens/ForgotPasswordScreen';
 import HomeScreen from './frontend/screens/HomeScreen';
 
 // Bus screens (100% preserved)
@@ -128,8 +129,8 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <BookingProvider initialBooking={booking}>
-        <SafeAreaView style={styles.container}>
-          <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <SafeAreaView style={[styles.container, screen === 'splash' && { backgroundColor: '#CDE7FD' }]}>
+          <StatusBar barStyle="dark-content" backgroundColor={screen === 'splash' ? '#CDE7FD' : '#ffffff'} />
           <View style={styles.screenContainer}>
             {/* Auth & Splash */}
             {screen === 'splash' && <SplashScreen onNavigate={nav} />}
@@ -137,6 +138,7 @@ export default function App() {
             {screen === 'login' && <LoginScreen onNavigate={nav} />}
             {screen === 'register' && <RegisterScreen onNavigate={nav} />}
             {screen === 'otp' && <OTPScreen onNavigate={nav} />}
+            {screen === 'forgot-password' && <ForgotPasswordScreen onNavigate={nav} />}
 
             {/* Dashboard */}
             {screen === 'home' && <HomeScreen {...props} />}
