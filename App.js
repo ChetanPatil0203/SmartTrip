@@ -53,7 +53,6 @@ import PaymentScreen from './frontend/screens/PaymentScreen';
 import BookingConfirmationScreen from './frontend/screens/BookingConfirmationScreen';
 import TicketScreen from './frontend/screens/TicketScreen';
 import MyTripsScreen from './frontend/screens/MyTripsScreen';
-import LiveTrackingScreen from './frontend/screens/LiveTrackingScreen';
 import DelayAlertScreen from './frontend/screens/DelayAlertScreen';
 import AlternativeBusScreen from './frontend/screens/AlternativeBusScreen';
 import MissedBusScreen from './frontend/screens/MissedBusScreen';
@@ -152,7 +151,6 @@ export default function App() {
             {screen === 'passenger-details' && <PassengerDetailsScreen {...props} />}
             {screen === 'booking-confirmation' && <BookingConfirmationScreen onNavigate={nav} booking={booking} />}
             {screen === 'ticket' && <TicketScreen onNavigate={nav} booking={booking} />}
-            {screen === 'live-tracking' && <LiveTrackingScreen onNavigate={nav} booking={booking} />}
             {screen === 'delay-alert' && <DelayAlertScreen onNavigate={nav} booking={booking} />}
             {screen === 'alternative-bus' && <AlternativeBusScreen onNavigate={nav} booking={booking} setBooking={setBooking} />}
             {screen === 'missed-bus' && <MissedBusScreen onNavigate={nav} booking={booking} />}

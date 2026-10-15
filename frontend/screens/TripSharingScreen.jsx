@@ -42,7 +42,7 @@ export default function TripSharingScreen({ onNavigate, booking = {} }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => onNavigate('live-tracking')} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn} activeOpacity={0.7}>
           <ArrowLeft size={18} color="#FFFFFF" />
         </TouchableOpacity>
         <View>

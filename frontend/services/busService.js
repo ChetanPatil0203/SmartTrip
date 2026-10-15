@@ -49,11 +49,6 @@ const busService = {
     return await api.get(`/buses/${scheduleId}/dropping-points`);
   },
 
-  // GET /api/buses/:scheduleId/tracking
-  getLiveTracking: async (scheduleId) => {
-    return await api.get(`/buses/${scheduleId}/tracking`);
-  },
-
   // GET /api/buses/:scheduleId/delay
   getDelayAlert: async (scheduleId) => {
     return await api.get(`/buses/${scheduleId}/delay`);

@@ -95,17 +95,6 @@ const getOverview = async (req, res, next) => {
   }
 };
 
-const getLiveTracking = async (req, res, next) => {
-  try {
-    return sendSuccess(res, "Live tracking vehicles retrieved", {
-      vehicles: activeVehicles,
-      totalActive: activeVehicles.length,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 const broadcastDelay = async (req, res, next) => {
   try {
     const { tripId, delayMinutes, message } = req.body;
@@ -122,6 +111,17 @@ const broadcastDelay = async (req, res, next) => {
 
     emitDelayAlert(payload);
     return sendSuccess(res, "Delay alert broadcasted via Socket.io", payload);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getLiveFleet = async (req, res, next) => {
+  try {
+    return sendSuccess(res, "Live fleet vehicles retrieved", {
+      vehicles: activeVehicles,
+      count: activeVehicles.length,
+    });
   } catch (error) {
     next(error);
   }
@@ -219,7 +219,7 @@ const replySupportTicket = async (req, res, next) => {
 
 module.exports = {
   getOverview,
-  getLiveTracking,
+  getLiveFleet,
   broadcastDelay,
   getSafetyReports,
   triggerSos,

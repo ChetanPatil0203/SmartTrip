@@ -141,7 +141,7 @@ export default function ForgotPasswordScreen({ onNavigate }) {
 
   const isEmail = identifier.includes('@');
 
-  // --- Step 1: Send OTP via FCM ---
+  // --- Step 1: Send OTP to Email/Phone ---
   const handleSendOtp = async () => {
     const trimmed = identifier.trim();
     if (!trimmed) {
@@ -157,19 +157,34 @@ export default function ForgotPasswordScreen({ onNavigate }) {
         email: isEmail ? trimmed : undefined,
         purpose: 'reset_password',
       });
-      if (res?.data?.devOtp) {
-        setFcmNotice(isEmail ? `Email OTP: ${res.data.devOtp}` : `FCM Code: ${res.data.devOtp}`);
-      } else if (res?.data?.message) {
-        setFcmNotice(res.data.message);
+      
+      const payload = res?.data?.data || res?.data || {};
+      const devOtp = payload.devOtp;
+      const emailSent = payload.emailSent !== false;
+
+      let successMessage = '';
+      if (isEmail) {
+        if (emailSent) {
+          successMessage = `Verification code sent to your email (${trimmed}). Please check your inbox.`;
+        } else if (devOtp) {
+          successMessage = `⚡ Dev OTP: ${devOtp} (SMTP issue: check terminal)`;
+          setOtp(String(devOtp).split('').slice(0, 6));
+        } else {
+          successMessage = `⚠️ Email delivery failed. Please check backend terminal for OTP.`;
+        }
       } else {
-        setFcmNotice(isEmail ? 'Real OTP sent to your Email inbox' : 'Dispatched via Firebase Cloud Messaging (FCM)');
+        successMessage = res?.data?.message || 'OTP dispatched to your phone via SMS/FCM';
+        if (devOtp) {
+          setOtp(String(devOtp).split('').slice(0, 6));
+        }
       }
+      
+      setFcmNotice(successMessage);
       setTimer(30);
       setStep(2);
     } catch (err) {
-      setFcmNotice(isEmail ? 'Email OTP: 123456' : 'FCM Code: 123456');
-      setTimer(30);
-      setStep(2);
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to send OTP. Please check your email or network connection.';
+      setErrorMsg(errMsg);
     } finally {
       setLoading(false);
     }
@@ -206,11 +221,31 @@ export default function ForgotPasswordScreen({ onNavigate }) {
         email: isEmail ? identifier.trim() : undefined,
         purpose: 'reset_password',
       });
-      setTimer(30);
-      if (res?.data?.devOtp) {
-        setFcmNotice(`New FCM Code: ${res.data.devOtp}`);
+      const payload = res?.data?.data || res?.data || {};
+      const devOtp = payload.devOtp;
+      const emailSent = payload.emailSent !== false;
+
+      let msg = '';
+      if (isEmail) {
+        if (emailSent) {
+          msg = `New verification code sent to ${identifier.trim()}. Check your inbox.`;
+        } else if (devOtp) {
+          msg = `⚡ Dev OTP: ${devOtp} (SMTP issue: check terminal)`;
+          setOtp(String(devOtp).split('').slice(0, 6));
+        } else {
+          msg = `⚠️ Email delivery failed. Check backend terminal for OTP.`;
+        }
+      } else {
+        msg = 'New verification OTP dispatched.';
+        if (devOtp) {
+          setOtp(String(devOtp).split('').slice(0, 6));
+        }
       }
-    } catch {
+      setTimer(30);
+      setFcmNotice(msg);
+    } catch (err) {
+      const errMsg = err?.response?.data?.message || err?.message || 'Could not resend OTP. Please try again.';
+      setErrorMsg(errMsg);
       setTimer(30);
     } finally {
       setResending(false);

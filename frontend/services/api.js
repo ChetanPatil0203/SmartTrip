@@ -9,7 +9,7 @@
 import { Platform, NativeModules } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const DEV_LAN_IP = '10.40.25.170';
+const DEV_LAN_IP = '10.2.0.71';
 
 // Automatically detect host IP (works on Web, Android Emulator, iOS Simulator, and Physical Devices over Expo LAN)
 const getHostAddress = () => {
@@ -30,6 +30,10 @@ const getHostAddress = () => {
 };
 
 const getBaseUrl = () => {
+  // When running in a web browser, use window.location.hostname so it always reaches backend on localhost or local LAN
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+    return `http://${window.location.hostname}:5000/api`;
+  }
   if (process.env.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL;
   }
@@ -110,7 +114,7 @@ export const getUser = async () => {
 // -------------------------------------------------------
 // Core fetch wrapper with 4.5s Timeout and Fast Retry
 // -------------------------------------------------------
-const TIMEOUT_MS = 4500;
+const TIMEOUT_MS = 15000;
 
 const fetchWithTimeout = async (url, options, timeout = TIMEOUT_MS) => {
   const controller = new AbortController();

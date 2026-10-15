@@ -9,7 +9,7 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { Bus, MapPin, Star } from 'lucide-react-native';
+import { Bus, MapPin, Star, ShieldCheck } from 'lucide-react-native';
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 // Custom SmartTrip Airplane Logo Icon with speed wings
@@ -116,17 +116,17 @@ const slides = [
   {
     id: 2,
     image: require('../assets/onboarding_tracking.jpg'),
-    icon: MapPin,
-    iconColor: '#2563EB',
-    iconBg: '#DBEAFE',
-    highlightWord: 'Bus',
-    titlePrefix: 'Live ',
-    titleSuffix: ' Tracking',
-    desc: 'Track your bus in real-time. Get notified about delays, arrivals and route updates instantly.',
-    accent: '#2563EB',
-    swooshColor: '#D13239', // SmartTrip red brand swoosh
+    icon: ShieldCheck,
+    iconColor: '#059669',
+    iconBg: '#DCFCE7',
+    highlightWord: 'Safe',
+    titlePrefix: 'Verified & ',
+    titleSuffix: ' Travel',
+    desc: 'Enjoy verified operators, secure digital payments, and hassle-free instant e-tickets on every trip.',
+    accent: '#059669',
+    swooshColor: '#D13239',
     buttonText: 'Next →',
-    hasTrackingOverlay: true,
+    hasTrackingOverlay: false,
     hasRatingOverlay: false,
   },
   {
@@ -195,30 +195,11 @@ export default function OnboardingScreen({ onNavigate }) {
       {/* HERO VISUAL CONTAINER */}
       <View style={[styles.heroCard, { height: heroHeight }]}>
         <ImageBackground
+          key={slide.id}
           source={slide.image}
           style={styles.heroImage}
           resizeMode="cover"
         >
-          {/* SCREEN 2: Floating Live Tracking Badges */}
-          {slide.hasTrackingOverlay && (
-            <>
-              {/* Top-Right: ● Live Tracking Badge */}
-              <View style={styles.liveTrackingPill}>
-                <View style={styles.livePulseDot} />
-                <Text style={styles.liveTrackingText}>Live Tracking</Text>
-              </View>
-
-              {/* Bottom Info Card: Bus KA-12-AB-1234 */}
-              <View style={styles.busInfoCard}>
-                <Text style={styles.busNumberText}>Bus  KA-12-AB-1234</Text>
-                <View style={styles.statusRow}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.statusText}>On Time  •  2h 15m left</Text>
-                </View>
-              </View>
-            </>
-          )}
-
           {/* SCREEN 3: Floating ★ 4.8 Rating Card */}
           {slide.hasRatingOverlay && (
             <View style={styles.ratingCard}>

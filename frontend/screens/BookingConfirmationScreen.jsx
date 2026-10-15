@@ -172,15 +172,6 @@ export default function BookingConfirmationScreen({ onNavigate, booking = {} }) 
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => onNavigate("live-tracking")}
-            style={[styles.outlineBtn, { backgroundColor: "#0F172A", borderColor: "#0F172A" }]}
-            activeOpacity={0.8}
-          >
-            <Radio size={14} color="#38BDF8" />
-            <Text style={[styles.outlineBtnText, { color: "#FFFFFF" }]}>Live Radar</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             onPress={() => onNavigate("ticket")}
             style={[styles.outlineBtn, { backgroundColor: "#FFF5F5" }]}
             activeOpacity={0.7}

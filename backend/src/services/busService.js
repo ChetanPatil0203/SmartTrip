@@ -248,25 +248,6 @@ const busService = {
     return { schedule: sched };
   },
 
-  getLiveTracking: async (scheduleId) => {
-    const sched = await BusModel.findScheduleById(scheduleId);
-    if (!sched) {
-      const error = new Error("Bus schedule not found");
-      error.statusCode = 404;
-      throw error;
-    }
-
-    const tracking = await BusModel.findLatestTracking(scheduleId);
-    if (!tracking) {
-      return {
-        tracking: null,
-        message: "Live tracking is currently unavailable",
-      };
-    }
-
-    return { tracking };
-  },
-
   getDelayAlert: async (scheduleId) => {
     const sched = await BusModel.findScheduleById(scheduleId);
     if (!sched) {

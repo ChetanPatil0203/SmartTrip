@@ -14,7 +14,7 @@ module.exports = {
   paymentKeySecret: process.env.PAYMENT_KEY_SECRET || "",
   paymentWebhookSecret: process.env.PAYMENT_WEBHOOK_SECRET || "",
   emailService: process.env.EMAIL_SERVICE || "gmail",
-  emailUser: process.env.EMAIL_USER || "",
-  emailPass: process.env.EMAIL_PASS || "",
+  emailUser: (process.env.EMAIL_USER || process.env.ESMTP_USER || process.env.SMTP_USER || "").trim(),
+  emailPass: (process.env.EMAIL_PASS || process.env.SMTP_PASS || "").replace(/\s+/g, ""),
   emailFrom: process.env.EMAIL_FROM || "",
 };

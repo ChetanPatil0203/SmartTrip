@@ -1,7 +1,7 @@
 const express = require("express");
 const {
   getOverview,
-  getLiveTracking,
+  getLiveFleet,
   broadcastDelay,
   getSafetyReports,
   triggerSos,
@@ -15,8 +15,10 @@ const router = express.Router();
 // GET /api/admin/overview
 router.get("/overview", getOverview);
 
-// Tracking & Delays
-router.get("/tracking/live", getLiveTracking);
+// Live Fleet Tracking
+router.get("/tracking/live", getLiveFleet);
+
+// Delays
 router.post("/tracking/delay", broadcastDelay);
 
 // Safety & SOS

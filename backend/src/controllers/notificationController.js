@@ -106,6 +106,69 @@ const registerFCMToken = async (req, res, next) => {
   }
 };
 
+// DELETE /api/notifications/fcm-token
+const unregisterFCMToken = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const { token } = req.body;
+    if (!token) {
+      return sendError(res, "Device token is required", 400);
+    }
+    const fcmService = require("../services/fcmService");
+    const result = await fcmService.unregisterDeviceToken(userId, token);
+    return sendSuccess(res, "Device token unregistered successfully", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/notifications/fcm-status
+const getFCMStatus = async (req, res, next) => {
+  try {
+    const fcmService = require("../services/fcmService");
+    const status = fcmService.getStatus();
+    return sendSuccess(res, "FCM status fetched successfully", status);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/notifications/test-push
+const sendTestPushNotification = async (req, res, next) => {
+  try {
+    const userId = req.user.id || req.user.userId;
+    const {
+      title = "SmartTrip Test Alert",
+      body = "This is a test push notification from SmartTrip Cloud Messaging!",
+      token = null,
+      data = {},
+    } = req.body;
+
+    const fcmService = require("../services/fcmService");
+
+    let result;
+    if (token) {
+      // Send directly to the given token
+      result = await fcmService.sendToToken(token, {
+        title,
+        body,
+        data: { ...data, test: "true", timestamp: String(Date.now()) },
+      });
+    } else {
+      // Send to the logged-in user's registered devices
+      result = await fcmService.sendPushNotification(userId, {
+        title,
+        body,
+        data: { ...data, test: "true", timestamp: String(Date.now()) },
+      });
+    }
+
+    return sendSuccess(res, "Test push notification dispatched", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUserNotifications,
   getUnreadCount,
@@ -114,4 +177,7 @@ module.exports = {
   markAllAsRead,
   deleteNotification,
   registerFCMToken,
+  unregisterFCMToken,
+  getFCMStatus,
+  sendTestPushNotification,
 };

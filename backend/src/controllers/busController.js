@@ -104,16 +104,6 @@ const getDroppingPoints = async (req, res, next) => {
   }
 };
 
-const getLiveTracking = async (req, res, next) => {
-  try {
-    const { scheduleId } = req.params;
-    const result = await busService.getLiveTracking(scheduleId);
-    return sendSuccess(res, result.message || "Live tracking retrieved successfully", result);
-  } catch (error) {
-    next(error);
-  }
-};
-
 const getDelayAlert = async (req, res, next) => {
   try {
     const { scheduleId } = req.params;
@@ -135,6 +125,5 @@ module.exports = {
   getSeatLayout,
   getBoardingPoints,
   getDroppingPoints,
-  getLiveTracking,
   getDelayAlert,
 };

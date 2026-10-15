@@ -3,18 +3,34 @@ const { sendSuccess, sendError } = require("../utils/response");
 
 const planTrip = async (req, res, next) => {
   try {
-    const { origin, destination, days, budget, travelType, preferredTransport, language } = req.body;
+    const {
+      origin,
+      destination,
+      destinations,
+      days,
+      budget,
+      travelType,
+      travelStyle,
+      passengersCount,
+      preferredTransport,
+      language,
+      query,
+    } = req.body;
 
-    if (!destination) {
-      return sendError(res, "Destination is required for planning a trip", 400);
+    if (!destination && !destinations && !query) {
+      return sendError(res, "Destination or trip query is required for planning a trip", 400);
     }
 
     const plan = await aiService.generateTripPlan({
+      query,
       origin: origin || "Pune",
       destination,
-      days: days || 3,
-      budget: budget || 10000,
+      destinations,
+      days,
+      budget,
       travelType: travelType || "Friends",
+      travelStyle: travelStyle || "standard",
+      passengersCount: passengersCount || 1,
       preferredTransport: preferredTransport || "Any",
       language: language || "mr",
     });

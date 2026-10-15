@@ -7,6 +7,9 @@ const {
   markAllAsRead,
   deleteNotification,
   registerFCMToken,
+  unregisterFCMToken,
+  getFCMStatus,
+  sendTestPushNotification,
 } = require("../controllers/notificationController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
@@ -15,8 +18,17 @@ const router = express.Router();
 // ALL NOTIFICATION ROUTES REQUIRE JWT AUTH
 // -------------------------------------------------------
 
+// GET /api/notifications/fcm-status — get FCM configuration status
+router.get("/fcm-status", authMiddleware, getFCMStatus);
+
+// POST /api/notifications/test-push — send a test push notification
+router.post("/test-push", authMiddleware, sendTestPushNotification);
+
 // POST /api/notifications/fcm-token — register device token for push notifications
 router.post("/fcm-token", authMiddleware, registerFCMToken);
+
+// DELETE /api/notifications/fcm-token — unregister device token
+router.delete("/fcm-token", authMiddleware, unregisterFCMToken);
 
 // GET /api/notifications — list with pagination + filters
 router.get("/", authMiddleware, getUserNotifications);

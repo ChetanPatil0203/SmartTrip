@@ -32,6 +32,21 @@ const notificationService = {
   registerFCMToken: async (token, platform = 'android') => {
     return await api.post('/notifications/fcm-token', { token, platform }, true);
   },
+
+  // DELETE /api/notifications/fcm-token
+  unregisterFCMToken: async (token) => {
+    return await api.delete('/notifications/fcm-token', { token }, true);
+  },
+
+  // GET /api/notifications/fcm-status
+  getFCMStatus: async () => {
+    return await api.get('/notifications/fcm-status', true);
+  },
+
+  // POST /api/notifications/test-push
+  sendTestPush: async ({ title, body, token } = {}) => {
+    return await api.post('/notifications/test-push', { title, body, token }, true);
+  },
 };
 
 const offerService = {
@@ -104,4 +119,14 @@ const reviewService = {
   deleteReview: async (id) => api.delete(`/reviews/${id}`, true),
 };
 
-export { notificationService, offerService, supportService, safetyService, reviewService };
+const couponService = {
+  // POST /api/coupons/validate
+  validateCoupon: async ({ code, amount, bookingType }) => {
+    return await api.post('/coupons/validate', { code, amount, bookingType }, true);
+  },
+
+  // GET /api/coupons/my-coupons
+  getMyCoupons: async () => api.get('/coupons/my-coupons', true),
+};
+
+export { notificationService, offerService, couponService, supportService, safetyService, reviewService };

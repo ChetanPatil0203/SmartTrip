@@ -10,11 +10,9 @@ const {
   getSeatLayout,
   getBoardingPoints,
   getDroppingPoints,
-  getLiveTracking,
   getDelayAlert,
 } = require("../controllers/busController");
 const {
-  getTrackingHistory,
   getDelayHistory,
 } = require("../controllers/busTrackingController");
 
@@ -45,9 +43,6 @@ router.get("/schedules/:id", getScheduleById);
 router.get("/:scheduleId/seats", getSeatLayout);
 router.get("/:scheduleId/boarding-points", getBoardingPoints);
 router.get("/:scheduleId/dropping-points", getDroppingPoints);
-// MUST come BEFORE /:scheduleId/tracking to prevent route conflict
-router.get("/:scheduleId/tracking/history", getTrackingHistory);
-router.get("/:scheduleId/tracking", getLiveTracking);
 
 // MUST come BEFORE /:scheduleId/delay to prevent route conflict
 router.get("/:scheduleId/delay/history", getDelayHistory);

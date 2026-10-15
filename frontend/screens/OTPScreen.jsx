@@ -53,8 +53,8 @@ export default function OTPScreen({ onNavigate }) {
     (async () => {
       try {
         const res = await authService.sendOtp({ phone: '9876543210', purpose: 'login' });
-        if (isMounted && res?.data?.devOtp) {
-          setFcmNotice(`FCM OTP dispatched (Code: ${res.data.devOtp})`);
+        if (isMounted) {
+          setFcmNotice(res?.data?.message || 'Verification OTP dispatched');
         }
       } catch {
         // Fallback
@@ -88,7 +88,7 @@ export default function OTPScreen({ onNavigate }) {
     try {
       const res = await authService.sendOtp({ phone: '9876543210', purpose: 'login' });
       setTimer(30);
-      setFcmNotice(res?.data?.devOtp ? `New FCM OTP dispatched (Code: ${res.data.devOtp})` : 'New OTP dispatched via Firebase Cloud Messaging (FCM)');
+      setFcmNotice(res?.data?.message || 'New OTP dispatched via Cloud Messaging / SMS');
     } catch {
       setTimer(30);
     } finally {

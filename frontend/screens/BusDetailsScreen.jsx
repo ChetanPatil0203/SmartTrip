@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Image } from 'react-native';
 import { ArrowLeft, Star, Clock, Wifi, Zap, Droplets, Lightbulb, Wind, MapPin, ChevronRight, ShieldCheck, TrendingUp, CheckCircle2, User } from 'lucide-react-native';
 
 const amenities = [
@@ -11,7 +11,13 @@ const amenities = [
 ];
 
 const reviews = [
-  { name: 'Rahul M.', rating: 5, text: 'Very comfortable journey. Bus was on time and staff was helpful.', verified: true },
+  {
+    name: 'Rahul M.',
+    rating: 5,
+    text: 'Very comfortable journey. Clean sleeper berths with fresh blanket, individual charging point & reading light.',
+    verified: true,
+    photo: require('../assets/bus_luxury_interior.jpg'),
+  },
   { name: 'Priya S.', rating: 4, text: 'Clean bus, good AC. Boarding point was easy to find.', verified: true },
   { name: 'Amit K.', rating: 4, text: 'Smooth ride. Slight delay at start but reached on time.', verified: true },
 ];
@@ -24,14 +30,19 @@ export default function BusDetailsScreen({ onNavigate, booking }) {
 
   return (
     <View style={styles.container}>
-      {/* Hero */}
+      {/* Hero with Clean Real Bus Photo */}
       <View style={styles.heroGradient}>
-        <View style={styles.heroIconBox}>
-          <Text style={{ fontSize: 72 }}>🚌</Text>
-        </View>
+        <Image
+          source={bus.image || require('../assets/bus_msrtc_shivneri.jpg')}
+          style={styles.heroFullBusImage}
+          resizeMode="cover"
+        />
+        <View style={styles.heroDarkGradientOverlay} />
+
         <TouchableOpacity onPress={() => onNavigate('search-results')} style={styles.backBtn} activeOpacity={0.7}>
           <ArrowLeft size={18} color="#FFFFFF" />
         </TouchableOpacity>
+
         <View style={styles.heroFooter}>
           <View>
             <Text style={styles.operatorTitle}>{bus.operator}</Text>
@@ -179,6 +190,50 @@ export default function BusDetailsScreen({ onNavigate, booking }) {
           </View>
         ) : (
           <View style={styles.gap12}>
+            {/* Sleeper Cabin Photos in Reviews */}
+            <View style={styles.travelerPhotosCard}>
+              <View style={styles.travelerPhotosHeader}>
+                <View>
+                  <Text style={styles.travelerPhotosTitle}>📸 Traveler Photos (स्लीपर केबिन)</Text>
+                  <Text style={styles.travelerPhotosSub}>प्रवाशांनी काढलेले स्लीपर बर्थ व केबिनचे फोटो</Text>
+                </View>
+                <View style={styles.photoCountBadge}>
+                  <Text style={styles.photoCountText}>2 Photos</Text>
+                </View>
+              </View>
+
+              <View style={styles.cabinPhotosGrid}>
+                <View style={styles.cabinPhotoCard}>
+                  <Image
+                    source={require('../assets/bus_luxury_interior.jpg')}
+                    style={styles.cabinPhoto}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.cabinPhotoTag}>
+                    <Text style={styles.cabinPhotoTagText}>🛏️ स्लीपर बर्थ व केबिन</Text>
+                  </View>
+                </View>
+
+                <View style={styles.cabinPhotoCard}>
+                  <Image
+                    source={bus.image || require('../assets/bus_msrtc_shivneri.jpg')}
+                    style={styles.cabinPhoto}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.cabinPhotoTag}>
+                    <Text style={styles.cabinPhotoTagText}>🚌 कोच बाहेरील लूक</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.photoCaptionBox}>
+                <Text style={styles.photoCaptionText}>
+                  "स्लीपर बर्थ अतिशय स्वच्छ होते, पांघरूण आणि उशी ताजी होती, मोबाईल चार्जिंग सॉकेट चालू होते." — राहुल एम. (Verified Passenger)
+                </Text>
+              </View>
+            </View>
+
+            {/* Individual Reviews */}
             {reviews.map((r, i) => (
               <View key={i} style={styles.card}>
                 <View style={styles.reviewHeader}>
@@ -208,6 +263,14 @@ export default function BusDetailsScreen({ onNavigate, booking }) {
                   </View>
                 </View>
                 <Text style={styles.reviewBody}>{r.text}</Text>
+
+                {/* Review Photo Attachment */}
+                {r.photo && (
+                  <View style={styles.reviewPhotoAttachment}>
+                    <Image source={r.photo} style={styles.reviewPhotoThumb} resizeMode="cover" />
+                    <Text style={styles.reviewPhotoLabel}>📷 प्रवाशाने अपलोड केलेला स्लीपर केबिन फोटो ({r.name})</Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -240,15 +303,116 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
   },
   heroGradient: {
-    height: 208,
-    backgroundColor: '#1E3A5F',
+    height: 220,
+    backgroundColor: '#0F172A',
     position: 'relative',
-    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroFullBusImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroDarkGradientOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+  },
+  travelerPhotosCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  travelerPhotosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  travelerPhotosTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  travelerPhotosSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  photoCountBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  photoCountText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+  },
+  cabinPhotosGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+  },
+  cabinPhotoCard: {
+    flex: 1,
+    height: 120,
+    borderRadius: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#0F172A',
+  },
+  cabinPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  cabinPhotoTag: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    right: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
     alignItems: 'center',
   },
-  heroIconBox: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  cabinPhotoTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  photoCaptionBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#D13239',
+  },
+  photoCaptionText: {
+    fontSize: 11,
+    color: '#334155',
+    lineHeight: 16,
+    fontStyle: 'italic',
+  },
+  reviewPhotoAttachment: {
+    marginTop: 10,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  reviewPhotoThumb: {
+    width: '100%',
+    height: 140,
+  },
+  reviewPhotoLabel: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+    padding: 8,
   },
   backBtn: {
     position: 'absolute',

@@ -10,8 +10,8 @@ let transporter = null;
 const getTransporter = async () => {
   if (transporter) return transporter;
 
-  const emailUser = config.emailUser || process.env.EMAIL_USER;
-  const emailPass = config.emailPass || process.env.EMAIL_PASS;
+  const emailUser = (config.emailUser || process.env.EMAIL_USER || process.env.ESMTP_USER || process.env.SMTP_USER || "").trim();
+  const emailPass = (config.emailPass || process.env.EMAIL_PASS || process.env.SMTP_PASS || "").replace(/\s+/g, "");
 
   if (emailUser && emailPass) {
     // Production / Configured SMTP (Gmail, Outlook, Custom SMTP)
@@ -21,12 +21,15 @@ const getTransporter = async () => {
         user: emailUser,
         pass: emailPass,
       },
+      connectionTimeout: 4000,
+      greetingTimeout: 4000,
+      socketTimeout: 4000,
     });
     logger.info(`[EmailService] SMTP Transporter configured for ${emailUser}`);
     return transporter;
   }
 
-  // If credentials are not yet set, create an Ethereal auto-test account
+  // If credentials are not set at all, initialize Ethereal auto-test account
   try {
     const testAccount = await nodemailer.createTestAccount();
     transporter = nodemailer.createTransport({

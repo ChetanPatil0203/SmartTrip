@@ -51,6 +51,8 @@ const otpService = {
     let emailSent = false;
     let emailMessageId = null;
 
+    let emailDeliveryWarning = null;
+
     // Dispatch real email if identifier is an email address
     if (isEmail) {
       try {
@@ -64,6 +66,19 @@ const otpService = {
         logger.info(`[Email-OTP] Real OTP email sent to ${cleanKey} with code: ${otp}`);
       } catch (mailErr) {
         logger.error(`[Email-OTP] Error sending email to ${cleanKey}: ${mailErr.message}`);
+        console.log('\n=================================================================');
+        console.log(`⚡ [SMARTTRIP OTP FOR: ${cleanKey}]`);
+        console.log(`👉 VERIFICATION OTP: ${otp}`);
+        if (mailErr.message.includes("535") || mailErr.message.includes("BadCredentials")) {
+          console.log(`⚠️  Gmail SMTP: Invalid App Password in backend/.env`);
+          console.log(`👉 Please generate a 16-character App Password at https://myaccount.google.com/apppasswords`);
+          console.log(`   and update EMAIL_PASS in backend/.env to receive real emails in your inbox!`);
+        }
+        console.log('=================================================================\n');
+
+        emailDeliveryWarning = mailErr.message.includes("535") || mailErr.message.includes("BadCredentials")
+          ? "Gmail authentication failed. Update EMAIL_PASS in backend/.env."
+          : mailErr.message;
       }
     }
 
@@ -85,14 +100,16 @@ const otpService = {
     return {
       success: true,
       message: isEmail 
-        ? `Real OTP code sent to your email (${cleanKey})` 
+        ? (emailSent 
+            ? `Real OTP code sent to your email (${cleanKey}). Please check your inbox.`
+            : `Email delivery failed (SMTP auth issue). Dev OTP: ${otp}`)
         : `OTP sent successfully via Firebase Cloud Messaging (FCM)`,
       channel: isEmail ? "EMAIL" : "FCM_PUSH",
       identifier: cleanKey,
       emailSent,
+      emailDeliveryWarning,
       expiresInSeconds: 600,
-      // Provide devOtp in development mode for easy testing/examiner demo
-      ...(config.nodeEnv === "development" ? { devOtp: otp } : {}),
+      devOtp: config.nodeEnv === "development" ? otp : (emailSent ? undefined : otp),
     };
   },
 
@@ -113,39 +130,34 @@ const otpService = {
 
     const record = otpStore.get(cleanKey);
 
-    // Allow universal testing OTP '123456' in development
-    const isMasterOtp = config.nodeEnv === "development" && (enteredOtp === "123456" || enteredOtp === "999999");
-
-    if (!record && !isMasterOtp) {
+    if (!record) {
       const error = new Error("No active OTP found. Please request a new OTP.");
       error.statusCode = 400;
       throw error;
     }
 
-    if (record) {
-      if (Date.now() > record.expiresAt) {
-        otpStore.delete(cleanKey);
-        const error = new Error("OTP has expired. Please request a new OTP.");
-        error.statusCode = 400;
-        throw error;
-      }
-
-      if (record.otp !== enteredOtp && !isMasterOtp) {
-        record.attempts += 1;
-        if (record.attempts >= 5) {
-          otpStore.delete(cleanKey);
-          const error = new Error("Too many invalid attempts. Please request a new OTP.");
-          error.statusCode = 429;
-          throw error;
-        }
-        const error = new Error("Invalid OTP code. Please enter the correct 6-digit code.");
-        error.statusCode = 400;
-        throw error;
-      }
-
-      // Valid OTP: consume it
+    if (Date.now() > record.expiresAt) {
       otpStore.delete(cleanKey);
+      const error = new Error("OTP has expired. Please request a new OTP.");
+      error.statusCode = 400;
+      throw error;
     }
+
+    if (record.otp !== enteredOtp) {
+      record.attempts += 1;
+      if (record.attempts >= 5) {
+        otpStore.delete(cleanKey);
+        const error = new Error("Too many invalid attempts. Please request a new OTP.");
+        error.statusCode = 429;
+        throw error;
+      }
+      const error = new Error("Invalid OTP code. Please enter the correct 6-digit code received on your email.");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Valid OTP: consume it
+    otpStore.delete(cleanKey);
 
     // Find or create user to issue JWT
     let user = null;

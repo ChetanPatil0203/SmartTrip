@@ -358,7 +358,7 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
     }));
     try {
       await AsyncStorage.setItem("@smarttrip_user_city", cityName);
-    } catch {}
+    } catch { }
     setCityModalVisible(false);
   };
 
@@ -378,7 +378,7 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
       }));
       try {
         await AsyncStorage.setItem("@smarttrip_user_city", cleanCity);
-      } catch {}
+      } catch { }
       setIsLocating(false);
       setCityModalVisible(false);
     };
@@ -409,7 +409,7 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
               await applyLocation(city, data.address?.country_code || "IN");
               return;
             }
-          } catch {}
+          } catch { }
           fallbackToJalgaonOrIp(applyLocation);
         },
         () => {
@@ -462,7 +462,7 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
           }));
           return;
         }
-      } catch {}
+      } catch { }
       // Default to Jalgaon
       setUserLocation("Jalgaon, IN");
       setBooking((prev) => ({
@@ -473,7 +473,7 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
       }));
       try {
         await AsyncStorage.setItem("@smarttrip_user_city", "Jalgaon");
-      } catch {}
+      } catch { }
     })();
   }, []);
 
@@ -1270,27 +1270,6 @@ export default function HomeScreen({ onNavigate, booking, setBooking }) {
             </View>
           )}
         </View>
-
-        {/* LIVE GPS BUS RADAR QUICK CARD */}
-        <TouchableOpacity
-          onPress={() => onNavigate("live-tracking")}
-          style={styles.radarHomeBanner}
-          activeOpacity={0.88}
-        >
-          <View style={styles.radarHomeLeft}>
-            <View style={styles.radarLiveBadge}>
-              <View style={styles.radarLiveDot} />
-              <Text style={styles.radarLiveBadgeText}>LIVE GPS RADAR</Text>
-            </View>
-            <Text style={styles.radarHomeTitle}>Track Active Bus on Radar</Text>
-            <Text style={styles.radarHomeSub}>
-              MSRTC Shivneri · {booking.from || "Jalgaon"} ➔ {booking.to || "Pune"} (68 km/h)
-            </Text>
-          </View>
-          <View style={styles.radarPulseCircle}>
-            <Radio size={22} color="#38BDF8" />
-          </View>
-        </TouchableOpacity>
 
         {/* SMART TRIP TIMELINE CARD */}
         <View style={styles.timelineBanner}>

@@ -7,7 +7,7 @@ export default function DelayAlertScreen({ onNavigate, booking }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => onNavigate('live-tracking')} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn} activeOpacity={0.7}>
           <ArrowLeft size={18} color="#FFFFFF" />
         </TouchableOpacity>
         <View>
@@ -102,12 +102,12 @@ export default function DelayAlertScreen({ onNavigate, booking }) {
         {/* Actions */}
         <View style={styles.actionsGrid}>
           <TouchableOpacity
-            onPress={() => onNavigate('live-tracking')}
+            onPress={() => onNavigate('ticket')}
             style={styles.primaryBtn}
             activeOpacity={0.8}
           >
-            <Navigation size={16} color="#FFFFFF" />
-            <Text style={styles.primaryBtnText}>Track Bus</Text>
+            <Clock size={16} color="#FFFFFF" />
+            <Text style={styles.primaryBtnText}>View Ticket</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.7}>

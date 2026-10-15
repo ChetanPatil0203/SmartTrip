@@ -41,7 +41,7 @@ function getBookingInfo(booking) {
         time: sched?.departureTime || '',
         seats: booking.passengers?.map(p => p.seatNumber).filter(Boolean).join(', ') || '—',
         ticketScreen: 'ticket',
-        trackScreen: 'live-tracking',
+        trackScreen: null,
       };
     }
     case 'TRAIN': {

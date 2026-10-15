@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, RefreshControl } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, RefreshControl, Image } from "react-native";
 import {
   ArrowLeft,
   SlidersHorizontal,
@@ -26,6 +26,24 @@ const REAL_BUS_OPERATORS = [
   { name: "Neeta Tours & Travels", type: "Volvo AC Sleeper (2+1)", departure: "07:30 PM", arrival: "11:00 PM", fare: 650, rating: 4.5, onTime: 92 },
   { name: "Gujarat Travels", type: "BharatBenz AC Sleeper", departure: "10:00 PM", arrival: "01:30 AM", fare: 600, rating: 4.3, onTime: 89 },
 ];
+
+const BUS_IMAGES = {
+  shivneri: require("../assets/bus_msrtc_shivneri.jpg"),
+  vrl: require("../assets/bus_vrl_luxury.jpg"),
+  interior: require("../assets/bus_luxury_interior.jpg"),
+  zing: require("../assets/onboarding_bus.jpg"),
+  operators: require("../assets/onboarding_operators.jpg"),
+};
+
+function getBusImage(operatorName = "", index = 0) {
+  const op = operatorName.toLowerCase();
+  if (op.includes("shivneri") || op.includes("msrtc")) return BUS_IMAGES.shivneri;
+  if (op.includes("vrl")) return BUS_IMAGES.vrl;
+  if (op.includes("zing")) return BUS_IMAGES.zing;
+  if (op.includes("neeta")) return BUS_IMAGES.vrl;
+  if (op.includes("purple") || op.includes("prasanna")) return BUS_IMAGES.operators;
+  return index % 2 === 0 ? BUS_IMAGES.shivneri : BUS_IMAGES.vrl;
+}
 
 // Map backend schedule to UI bus shape with real operator names
 function mapScheduleToBus(sched, index = 0) {
@@ -104,6 +122,8 @@ function mapScheduleToBus(sched, index = 0) {
     score: typeof rating === "number" && rating > 0 ? rating : fallback.rating,
     bookingAccuracy: 95 + (index % 4),
     busNumber: sched.busNumber || sched.bus?.busNumber || `MH-12-ST-${1000 + index}`,
+    image: getBusImage(operatorName, index),
+    interiorImage: BUS_IMAGES.interior,
   };
 }
 
@@ -346,6 +366,28 @@ export default function SearchResultsScreen({ onNavigate, booking, setBooking })
         ) : (
           sorted.map((bus, idx) => (
             <View key={bus.id ? `bus-${bus.id}-${idx}` : `bus-idx-${idx}`} style={styles.busCard}>
+              {/* Bus Visual Banner with Real Photo */}
+              <TouchableOpacity
+                style={styles.busThumbnailContainer}
+                onPress={() => {
+                  setBooking({ selectedBus: bus });
+                  onNavigate("bus-details");
+                }}
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={bus.image}
+                  style={styles.busThumbnailImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.busThumbnailOverlay} />
+                <View style={styles.busThumbnailBadgeLeft}>
+                  <Text style={styles.busThumbnailBadgeText}>
+                    {bus.type?.includes("Sleeper") ? "✨ AC SLEEPER" : "✨ PREMIUM AC"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
               {/* Operator Header */}
               <View style={styles.cardHeader}>
                 <View style={{ flex: 1, paddingRight: 8 }}>
@@ -689,5 +731,36 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "800",
+  },
+  busThumbnailContainer: {
+    height: 110,
+    width: "100%",
+    position: "relative",
+    backgroundColor: "#0F172A",
+  },
+  busThumbnailImage: {
+    width: "100%",
+    height: "100%",
+  },
+  busThumbnailOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.25)",
+  },
+  busThumbnailBadgeLeft: {
+    position: "absolute",
+    top: 8,
+    left: 10,
+    backgroundColor: "rgba(15, 23, 42, 0.75)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  busThumbnailBadgeText: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#FDE047",
+    letterSpacing: 0.5,
   },
 });

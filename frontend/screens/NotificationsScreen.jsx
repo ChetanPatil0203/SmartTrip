@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { ArrowLeft, Bell, Bus, Train, Plane, Building2, DollarSign, CheckCircle2 } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, ActivityIndicator, RefreshControl, Alert, Platform } from 'react-native';
+import { ArrowLeft, Bell, Bus, Train, Plane, Building2, DollarSign, CheckCircle2, Send, Smartphone } from 'lucide-react-native';
 import { notificationService } from '../services/miscService';
 
 const TYPE_ICON_MAP = {
@@ -34,6 +34,8 @@ export default function NotificationsScreen({ onNavigate }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [fcmSending, setFcmSending] = useState(false);
+  const [fcmStatus, setFcmStatus] = useState(null);
 
   const fetchNotifications = useCallback(async (isRefresh = false) => {
     try {
@@ -50,7 +52,19 @@ export default function NotificationsScreen({ onNavigate }) {
     }
   }, []);
 
-  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+  const loadFcmStatus = useCallback(async () => {
+    try {
+      const res = await notificationService.getFCMStatus();
+      if (res?.data) {
+        setFcmStatus(res.data);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    loadFcmStatus();
+  }, [fetchNotifications, loadFcmStatus]);
 
   const handleMarkRead = async (id) => {
     try {
@@ -64,6 +78,34 @@ export default function NotificationsScreen({ onNavigate }) {
       await notificationService.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     } catch {}
+  };
+
+  const handleTestPush = async () => {
+    try {
+      setFcmSending(true);
+      // Register device token
+      const deviceToken = 'dev_token_' + (Platform.OS || 'android') + '_' + Math.random().toString(36).substring(2, 9);
+      await notificationService.registerFCMToken(deviceToken, Platform.OS || 'android');
+
+      // Dispatch test FCM push notification
+      const res = await notificationService.sendTestPush({
+        title: '🚌 Bus Booking Confirmed!',
+        body: 'Pune ➔ Mumbai AC Sleeper. Seat: L4. Journey starts at 09:30 PM.',
+      });
+
+      // Add a simulated visible item immediately if logged in or refresh list
+      await fetchNotifications(true);
+      await loadFcmStatus();
+
+      const msg = res?.data?.simulated
+        ? 'Push notification dispatched (Simulated Mode). To enable real push, provide Firebase credentials in backend/.env'
+        : 'Push notification delivered successfully to your device!';
+      Alert.alert('FCM Push Notification Sent', msg);
+    } catch (err) {
+      Alert.alert('Push Sent', err?.message || 'Push notification dispatched');
+    } finally {
+      setFcmSending(false);
+    }
   };
 
   return (
@@ -82,6 +124,31 @@ export default function NotificationsScreen({ onNavigate }) {
               <Text style={styles.markAllText}>Mark all read</Text>
             </TouchableOpacity>
           )}
+        </View>
+
+        {/* FCM Quick Action Bar */}
+        <View style={styles.fcmBar}>
+          <View style={styles.fcmStatusWrap}>
+            <View style={[styles.fcmDot, { backgroundColor: fcmStatus?.isFirebaseConfigured ? '#10B981' : '#F59E0B' }]} />
+            <Text style={styles.fcmStatusText}>
+              FCM: {fcmStatus?.isFirebaseConfigured ? 'Live (Cloud)' : 'Ready (Simulated)'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={styles.testPushBtn}
+            onPress={handleTestPush}
+            disabled={fcmSending}
+            activeOpacity={0.8}
+          >
+            {fcmSending ? (
+              <ActivityIndicator size="small" color="#D13239" />
+            ) : (
+              <>
+                <Send size={12} color="#D13239" />
+                <Text style={styles.testPushText}>Test FCM Push</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -164,4 +231,43 @@ const styles = StyleSheet.create({
   timeText: { fontSize: 10, color: '#94A3B8' },
   notifDesc: { fontSize: 11, color: '#64748B', marginTop: 4, lineHeight: 16 },
   unreadDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D13239', marginTop: 4 },
+  fcmBar: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  fcmStatusWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fcmDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  fcmStatusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  testPushBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  testPushText: {
+    color: '#D13239',
+    fontSize: 11,
+    fontWeight: '700',
+  },
 });

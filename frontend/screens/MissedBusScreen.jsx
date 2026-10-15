@@ -12,7 +12,7 @@ export default function MissedBusScreen({ onNavigate, booking }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => onNavigate('live-tracking')} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => onNavigate('home')} style={styles.backBtn} activeOpacity={0.7}>
           <ArrowLeft size={18} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Missed Bus Assistance</Text>
@@ -86,7 +86,7 @@ export default function MissedBusScreen({ onNavigate, booking }) {
             {[
               { Icon: RefreshCw, label: 'Find Next Bus', action: () => onNavigate('search-results'), color: '#D13239', bg: '#FFF0F0' },
               { Icon: Phone, label: 'Call Operator', action: () => {}, color: '#2563EB', bg: '#EFF6FF' },
-              { Icon: Navigation, label: 'Live Tracking', action: () => onNavigate('live-tracking'), color: '#059669', bg: '#F0FFF4' },
+              { Icon: Bus, label: 'View Ticket', action: () => onNavigate('ticket'), color: '#059669', bg: '#F0FFF4' },
               { Icon: HelpCircle, label: 'Get Refund', action: () => onNavigate('cancel-ticket'), color: '#D97706', bg: '#FFFBEB' },
             ].map(({ Icon, label, action, color, bg }) => (
               <TouchableOpacity

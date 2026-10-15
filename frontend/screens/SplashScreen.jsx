@@ -78,94 +78,29 @@ export default function SplashScreen({ onNavigate }) {
   const [selectedMode, setSelectedMode] = useState("bus");
   const [activeDot, setActiveDot] = useState(0);
 
-  // Animated controllers
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const logoScale = useRef(new Animated.Value(0.92)).current;
+  // Animated controllers (Initialized to 1 for instant 0ms appearance - no blank flash)
+  const logoOpacity = useRef(new Animated.Value(1)).current;
+  const logoScale = useRef(new Animated.Value(1)).current;
 
-  const taglineOpacity = useRef(new Animated.Value(0)).current;
-  const taglineTranslateY = useRef(new Animated.Value(8)).current;
+  const taglineOpacity = useRef(new Animated.Value(1)).current;
+  const taglineTranslateY = useRef(new Animated.Value(0)).current;
 
-  const chipsOpacity = useRef(new Animated.Value(0)).current;
-  const chipsTranslateY = useRef(new Animated.Value(12)).current;
+  const chipsOpacity = useRef(new Animated.Value(1)).current;
+  const chipsTranslateY = useRef(new Animated.Value(0)).current;
 
-  const heroOpacity = useRef(new Animated.Value(0)).current;
+  const heroOpacity = useRef(new Animated.Value(1)).current;
 
-  const bottomCardOpacity = useRef(new Animated.Value(0)).current;
-  const bottomCardTranslateY = useRef(new Animated.Value(20)).current;
+  const bottomCardOpacity = useRef(new Animated.Value(1)).current;
+  const bottomCardTranslateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // 1. Logo entrance (400ms)
-    Animated.parallel([
-      Animated.timing(logoOpacity, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(logoScale, {
-        toValue: 1,
-        friction: 7,
-        tension: 90,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // 2. Tagline entrance (350ms, delay 150ms)
-    Animated.parallel([
-      Animated.timing(taglineOpacity, {
-        toValue: 1,
-        duration: 350,
-        delay: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(taglineTranslateY, {
-        toValue: 0,
-        duration: 350,
-        delay: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // 3. Category chips entrance (400ms, delay 250ms)
-    Animated.parallel([
-      Animated.timing(chipsOpacity, {
-        toValue: 1,
-        duration: 400,
-        delay: 250,
-        useNativeDriver: true,
-      }),
-      Animated.spring(chipsTranslateY, {
-        toValue: 0,
-        friction: 8,
-        tension: 85,
-        delay: 250,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // 4. Hero scene reveal (500ms, delay 280ms)
-    Animated.timing(heroOpacity, {
+    // Smooth micro-enhancement entrance
+    Animated.spring(logoScale, {
       toValue: 1,
-      duration: 500,
-      delay: 280,
+      friction: 8,
+      tension: 90,
       useNativeDriver: true,
     }).start();
-
-    // 5. Bottom card reveal (450ms, delay 400ms)
-    Animated.parallel([
-      Animated.timing(bottomCardOpacity, {
-        toValue: 1,
-        duration: 450,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.spring(bottomCardTranslateY, {
-        toValue: 0,
-        friction: 8,
-        tension: 90,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
 
     // Subtle pagination dot cycle: 0 -> 1 -> 2
     const dotInterval = setInterval(() => {

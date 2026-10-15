@@ -6,7 +6,6 @@ const {
   getBookingByReference,
 } = require("../controllers/bookingController");
 const {
-  getTrackingByBooking,
   getDelayByBooking,
 } = require("../controllers/busTrackingController");
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -31,11 +30,8 @@ router.get("/reference/:reference", authMiddleware, getBookingByReference);
 router.get("/:id", authMiddleware, getBookingById);
 
 // ----------------------------------------------------
-// PHASE 13: BUS TRACKING + DELAY (BOOKING-SPECIFIC)
+// PHASE 13: BUS DELAY (BOOKING-SPECIFIC)
 // ----------------------------------------------------
-
-// GET /api/bookings/:bookingId/tracking — JWT required, BUS bookings only
-router.get("/:bookingId/tracking", authMiddleware, getTrackingByBooking);
 
 // GET /api/bookings/:bookingId/delay — JWT required, BUS bookings only
 router.get("/:bookingId/delay", authMiddleware, getDelayByBooking);

@@ -511,6 +511,7 @@ async function main() {
         isActive: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   await prisma.coupon.createMany({
@@ -540,6 +541,7 @@ async function main() {
         isActive: true,
       },
     ],
+    skipDuplicates: true,
   });
 
   // ==========================================

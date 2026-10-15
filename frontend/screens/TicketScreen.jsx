@@ -511,15 +511,6 @@ export default function TicketScreen({ onNavigate, booking = {} }) {
               {downloadSuccess ? "Saved ✓" : "Download"}
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => onNavigate("live-tracking")}
-            style={styles.trackBtn}
-            activeOpacity={0.8}
-          >
-            <Radio size={15} color="#FFFFFF" />
-            <Text style={styles.trackBtnText}>Live Radar</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
