@@ -139,7 +139,10 @@ const DEFAULT_BOOKINGS = [
 
 const bookingModel = {
   executeTransaction: async (fn) => {
-    return await prisma.$transaction(fn);
+    return await prisma.$transaction(fn, {
+      maxWait: 15000,
+      timeout: 20000,
+    });
   },
 
   findBookingByIdAndUser: async (id, userId) => {

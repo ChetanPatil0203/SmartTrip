@@ -88,9 +88,14 @@ async function runAllTests() {
   // 3. Discovery APIs
   const today = new Date().toISOString().split('T')[0];
 
+  let foundScheduleId = null;
+
   await test('Buses: Search Buses', async () => {
     const data = await request(`/buses/search?source=Mumbai&destination=Pune&date=${today}`);
-    return `Found ${data.data?.schedules?.length || 0} buses`;
+    if (data.data?.schedules?.length > 0) {
+      foundScheduleId = data.data.schedules[0].id;
+    }
+    return `Found ${data.data?.schedules?.length || 0} buses (Sample Schedule: ${foundScheduleId || 'None'})`;
   });
 
   await test('Buses: Operators List', async () => {
@@ -203,13 +208,13 @@ async function runAllTests() {
   let createdBookingId = null;
 
   await test('Bookings: Create Bus Booking', async () => {
-    // Pick an operator or schedule if available
+    const targetScheduleId = foundScheduleId || '05dc05f4-900e-49f8-b62d-2200dc3ba412';
     const data = await request('/bookings', {
       method: 'POST',
       headers: { Authorization: `Bearer ${authToken}` },
       body: JSON.stringify({
         bookingType: 'BUS',
-        scheduleId: '30dab9e9-bd47-43b3-a306-402022f6e27d',
+        scheduleId: targetScheduleId,
         totalAmount: 1250,
         travelDate: '2026-10-01',
         passengers: [
